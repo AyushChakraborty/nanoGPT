@@ -19,3 +19,9 @@
 
 ### And last but not the least, the zero to hero series by none other than Mr Andrej Karpathy himself
 > ### [![ak](image-2.png)](https://www.youtube.com/watch?v=VMj-3S1tku0&list=PLAqhIrjkxbuWI23v9cThsA9GvCAUhRvKZ)
+
+> ### I already pretrained the model and saved the models params as a torch state dict, which is present in nanoGPT.pth, here is how u can generate some of your own Shakespearean text 
+> ### ``` python3 generation.py [num_of_words_to_generate]```
+> ### The upper cap is 5000 words(for no apparent reason)
+
+### This will be scaled up to a certain degree, so keep an eye!
