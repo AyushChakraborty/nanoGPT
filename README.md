@@ -1,4 +1,4 @@
-# This is an implementation of a small version of GPT(with a little under 100M paramters) from Andrej Karpathy's zero to hero series
+# This is an implementation of a small version of GPT(with a little under 10M paramters) from Andrej Karpathy's zero to hero series
 
 > ## The transformer model architecture
 > ![nanoGPT](image-1.png)

@@ -4,14 +4,17 @@ from torch.nn import functional as F
 
 #hyperparameters
 device = torch.device("mps" if torch.mps.is_available() else "cpu")  #from now on, will utilize the GPU
-batch_size = 32
-block_size = 8
+batch_size = 64
+block_size = 256
 max_iters = 5000
 eval_interval = 300
-learning_rate = 1e-3
+learning_rate = 3e-4
 eval_iters = 200
-n_embd = 32
-n_block_layers = 4
+n_embd = 384
+n_head = 6  #num of heads in a single attention block, so dimension of each
+#key, query and value vector for each token would be n_embd//n_head which is 64 in this case
+n_block_layers = 6
+dropout_prob = 0.2
 # ----------------
 
 torch.manual_seed(1337)
@@ -56,6 +59,7 @@ class Head(nn.Module):
         self.query = nn.Linear(n_embd, head_size, bias=False)
         self.value = nn.Linear(n_embd, head_size, bias=False)
         self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
+        self.dropout = nn.Dropout(dropout_prob)
 
     def forward(self, x):
         B, T, emb_dim = x.shape
@@ -68,7 +72,9 @@ class Head(nn.Module):
         wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf'))  #the :T is needed
         #to handle variable context size, as the context size is not fixed
         wei = F.softmax(wei, dim=2)  #attention grid per batch (B, T, T)
-
+        wei = self.dropout(wei)  #also applying dropout to the attention grid
+        #so as the prevent some of the nodes from communicating hence preventing
+        #overfitting
         v = self.value(x)
 
         out = wei @ v   # (B, T, head_size)
@@ -88,11 +94,12 @@ class MultiHeadAttention(nn.Module):
         self.heads = nn.ModuleList([Head(head_size) for _ in range(n_heads)])
         #these have deltaE but in the reduced dimension
         self.proj = nn.Linear(n_embd, n_embd)
+        self.droput = nn.Dropout(dropout_prob)
 
     def forward(self, x):
         out = torch.cat([h(x) for h in self.heads], dim=2)  #concat all the lower dim deltaE
         #to get the final deltaE of embedding space dim for a certain token
-        return self.proj(out)  #passing it through a linear layer 
+        return self.droput(self.proj(out))  #passing it through a linear layer 
         #here we get multiple context rich representations of the token, and we concatenate
         #them along the last dimension, so as to get the final context rich representation, 
         #its a bit different than the original transformer, where the context rich representation
@@ -108,7 +115,9 @@ class FeedForward(nn.Module):
         self.net = nn.Sequential(
             nn.Linear(n_embd, 4 * n_embd),
             nn.ReLU(),
-            nn.Linear(4 * n_embd, n_embd)
+            nn.Linear(4 * n_embd, n_embd),
+            nn.Dropout(dropout_prob)  #added at the end of the MLP block to prevent overfitting
+            #by randomly setting some of the activations of some neurons in the layer to zero
         )
 
     def forward(self, x):
@@ -149,7 +158,7 @@ class BigramLanguageModel(nn.Module):
         #the position encoding for a char based on where it occurs in the context block
         #and its embedded to the same dims as token embedding space, and that is of n_embd
 
-        self.blocks = nn.Sequential(*[Block(n_embd, 4) for _ in range(n_block_layers)])
+        self.blocks = nn.Sequential(*[Block(n_embd, n_head) for _ in range(n_block_layers)])
 
         self.ln_f = nn.LayerNorm(n_embd)  #also adding a layer norm at the very end of series of blocks
             #within a transformer
@@ -190,11 +199,8 @@ class BigramLanguageModel(nn.Module):
             idx = torch.cat([idx, idx_next], dim=1)  #(B, T+1)
         return idx
 
-
 model = BigramLanguageModel()
 m =  model.to(device) 
-
-
 @torch.no_grad()  #the point of this decorator is to turn off the gradient computation
 def estimate_loss():  #introduced as the train loss that is printed during the training is 
     #very noisy, to get some stable measuremenat
@@ -213,30 +219,29 @@ def estimate_loss():  #introduced as the train loss that is printed during the t
     model.train()  #once done with the estimate_loss() func call, set the model back to 
     #training mode, so that the training can continue
     return out
-    
+        
 
-#training this model
-optimiser = torch.optim.AdamW(m.parameters(), lr=1e-3) 
+def main():
+    #training this model
+    optimiser = torch.optim.AdamW(m.parameters(), lr=1e-3) 
 
-for iter in range(max_iters):
-    if iter % eval_interval == 0:
-        losses = estimate_loss()  #to get a stable measure of the loss
-        print(f"iter: {iter}, train_loss: {losses['train']}, val_loss: {losses['val']}")
+    for iter in range(max_iters):
+        if iter % eval_interval == 0:
+            losses = estimate_loss()  #to get a stable measure of the loss
+            print(f"iter: {iter}, train_loss: {losses['train']}, val_loss: {losses['val']}")
 
-    #get a batch of data
-    xb, yb = get_batch('train')
+        #get a batch of data
+        xb, yb = get_batch('train')
 
-    #evaluate the loss
-    logits, loss = m(xb, yb)
+        #evaluate the loss
+        logits, loss = m(xb, yb)
 
-    #backprop
-    optimiser.zero_grad(set_to_none=True)
-    loss.backward()
+        #backprop
+        optimiser.zero_grad(set_to_none=True)
+        loss.backward()
 
-    #update
-    optimiser.step()
+        #update
+        optimiser.step()
 
-
-#generate some text
-context = torch.zeros((1, 1), dtype=torch.long, device=device)
-print(decode(m.generate(context, 500)[0].tolist()))
+if __name__ == '__main__':
+    main()  #goes to show the importance of simple python good practices
