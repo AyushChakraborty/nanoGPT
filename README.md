@@ -24,4 +24,9 @@
  ### ``` python3 generation.py [num_of_words_to_generate]```
  ### The upper cap is 5000 words(for no apparent reason)
 
+### an egs i liked:
+![alt text](image.png)
+
+### pretty good for a "nano" GPT!!
+
 ### This will be scaled up to a certain degree, so keep an eye!
