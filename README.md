@@ -21,12 +21,15 @@
 > ### [![ak](image-2.png)](https://www.youtube.com/watch?v=VMj-3S1tku0&list=PLAqhIrjkxbuWI23v9cThsA9GvCAUhRvKZ)
 
  ### I already pretrained the model and saved the models params as a torch state dict, which is present in nanoGPT.pth, here is how u can generate some of your own Shakespearean text 
- ### ``` python3 generation.py [num_of_words_to_generate]```
+ ### ``` python3 generation.py ```
+ ### enter the inputs, and you have new shakespear :)
  ### The upper cap is 5000 words(for no apparent reason)
 
-### an egs i liked:
+### an egs i liked(from first iteration of nanoGPT):
 ![alt text](image.png)
 
+### from a newer one which can take in prompts(starting text)
+![alt text](image-3.png)
 ### pretty good for a "nano" GPT!!
 
 ### This will be scaled up to a certain degree, so keep an eye!
