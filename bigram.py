@@ -200,6 +200,7 @@ class BigramLanguageModel(nn.Module):
             idx = torch.cat([idx, idx_next], dim=1)  #(B, T+1)
         return idx
 
+
 model = BigramLanguageModel()
 m =  model.to(device) 
 @torch.no_grad()  #the point of this decorator is to turn off the gradient computation
