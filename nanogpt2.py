@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import torch
+import math
 import torch.nn as nn
 from torch.nn import functional as F
 from transformers import GPT2LMHeadModel
@@ -56,7 +57,7 @@ class CausalSelfAttention(nn.Module):
         q = q.view(B, T, self.n_head, self.n_embd//self.n_head).transpose(1, 2)
         v = v.view(B, T, self.n_head, self.n_embd//self.n_head).transpose(1, 2)
 
-        att = (q @ k.transpose(-2, -1)) * (k.size(-1) ** -0.5)  #essentially doing (k dot q )/ sqrt(d_k), (B, n_head, T, T)
+        att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))  #essentially doing (k dot q )/ sqrt(d_k), (B, n_head, T, T)
         #so the (T, T) attention grid for each head for each batch is obtained
 
         att = att.masked_fill(self.bias[:, :, :T, :T] == 0, float('-inf'))
@@ -126,8 +127,8 @@ class GPT(nn.Module):
         B, T = idx.shape
         assert T <= self.config.block_size, f"cannot forward sequence of length {T} because GPT2 is limited to block size {self.config.block_size}"
 
-        pos = torch.arange(0, self.config.block_size, dtype=torch.long, device=idx.device)  #(T)
-        pos_emb = self.transformer.wpe(pos[:T])  #(T, n_embd)
+        pos = torch.arange(0, T, dtype=torch.long, device=idx.device)  #(T)
+        pos_emb = self.transformer.wpe(pos)  #(T, n_embd)
         tok_emb = self.transformer.wte(idx)      #(B, T, n_embd)
         x = tok_emb + pos_emb  #(B, T, n_embd), the same tokens in embedding space but now infused with 
         #positional information
@@ -137,6 +138,7 @@ class GPT(nn.Module):
             x = b(x)
         
         logits = self.transformer.ln_f(x)  #(B, T, vocab_size), passing it through the final linear layer so as to obtain the logits from the last token
+        logits = self.lm_head(logits)      #(B, T, vocab_size), the logits for the next token
         return logits    
         #also since we feed the generation step also in batches it means that multiple sequences can
         #be generated at once
@@ -179,7 +181,7 @@ class GPT(nn.Module):
         sd_hf = model_hf.state_dict()
         sd_keys_hf = sd_hf.keys()
         sd_keys_hf = [k for k in sd_keys_hf if not k.endswith('attn.masked_bias')]  #in the HF implementation, the bias is named as masked_bias
-        
+        sd_keys_hf = [k for k in sd_keys_hf if not k.endswith('.attn.bias')] # same, just the mask (buffer)
         transposed = ['attn.c_attn.weight', 'attn.c_proj.weight', 'mlp.c_fc.weight', 'mlp.c_proj.weight']
         # basically the openai checkpoints use a "Conv1D" module, but we only want to use a vanilla linear
         # this means that we have to transpose these weights when we import them
@@ -208,7 +210,7 @@ model.to(device)     #this sets up the model
 
 #tokenising the input 
 enc = tkn.get_encoding('gpt2')                                #loads the encoding of gpt2 
-tokens = enc.encode("Hi, ")
+tokens = enc.encode("Hello, I'm a language model, ")
 tokens = torch.tensor(tokens, dtype=torch.long)               #(12, ), as seen from the tiktokenizer app, chk it out :)
 tokens = tokens.unsqueeze(0).repeat(num_return_sequences, 1)  #(3, 12), so that we can generate 3 sequences at once
 idx = tokens.to(device)                                       #putting it on the device
@@ -223,7 +225,7 @@ elif torch.mps.is_available():
 
 while idx.size(1) < max_length:
     with torch.no_grad():
-        #idx = idx[:, -max_length:]          #trimming the input sequence to the max_length
+        idx = idx[:, -max_length:]          #trimming the input sequence to the max_length
         logits = model(idx)                 #(num_return_sequences, T, vocab_size), where again, T is the number of tokens in the input sequence, and varies
         logits = logits[:, -1, :]           #(num_return_sequences, vocab_size),  get only the last tokens from each of the batches, as what we essentially have now at this point is a bigram problem at hand
         probs = F.softmax(logits, dim=-1)   #(num_return_sequences, vocab_size), the probabilities of the next token
@@ -233,10 +235,10 @@ while idx.size(1) < max_length:
         ix = torch.multinomial(topk_probs, num_samples=1)           #(num_return_sequences, 1), the indices of the tokens sampled from the top 50 tokens from each one of the batches
         idxcol = torch.gather(topk_indices, -1, ix)                   #(num_return_sequences, 1), the actual token indices sampled from the top 50 tokens
         idx = torch.cat((idx, idxcol), dim=1)                          #(num_return_sequences, T+1), the new token indices for each of the batches
+        
 
-
-#print the generated text
+# print the generated text
 for s in range(num_return_sequences):
     tokens = idx[s, :max_length].tolist()
     decoded = enc.decode(tokens)
-    print(":: ", tokens)
+    print(":: ", decoded)
