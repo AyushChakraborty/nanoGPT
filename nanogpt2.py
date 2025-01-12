@@ -36,6 +36,7 @@ class CausalSelfAttention(nn.Module):
         assert config.n_embd % config.n_head == 0   #making sure that the head dimension is a factor of the embedding dimension
         self.c_attn = nn.Linear(config.n_embd, 3*config.n_embd)  #linear layer for the attention
         self.c_proj = nn.Linear(config.n_embd, config.n_embd)   
+        self.c_proj.NANOGPT2_SCALE_INIT = 1.0
         self.n_head = config.n_head
         self.n_embd = config.n_embd
         self.register_buffer("bias", torch.tril(torch.ones(config.block_size, config.block_size)).view(1, 1, config.block_size, config.block_size))
@@ -82,6 +83,7 @@ class MLP(nn.Module):
         self.c_fc = nn.Linear(config.n_embd, 4*config.n_embd)
         self.gelu = nn.GELU(approximate='tanh')  #GELU or gaussian error linear unit is a softer version of RELU, where one of its advantage is that there is always some gradient contribution hence the issue of dead gradients is solved
         self.c_proj = nn.Linear(4*config.n_embd, config.n_embd)
+        self.c_proj.NANOGPT2_SCALE_INIT = 1.0
 
     def forward(self, x):
         x = self.c_fc(x)
@@ -121,13 +123,34 @@ class GPT(nn.Module):
 
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)  #the final linear layer, to get the logits
 
+        #weight-sharing scheme between the embedding layer and the unembedding layer
+        self.transformer.wte.weight = self.lm_head.weight  #weights of unembedding layer shared with embedding layer, 
+        #their shapes still remain the same, its just that wte points to the same tensor in memory location as lm_head, hence 
+        #if one updates, the other updates too, but the way in which they are interpreted later on do become different
+        #using this also, we can save memory as we dont have to store the same weights in two different places, in our
+        #case 40m out of 124m are saved, which is 30 percent
 
-    def forward(self, idx):  #used for generation of new tokens
+        self.apply(self.init_weights)  #calling the .apply() method of nn.Module which applies the init_weights method to all the layers in the model
+
+
+    def init_weights(self, module):
+        std = 0.02
+        if isinstance(module, nn.Linear):
+            if hasattr(module, 'NANOGPT2_SCALE_INIT'):
+                std *= (2 * self.config.n_layer) ** -0.5  #times two as for each block/n_layer, there is one attention and one MLP block
+            torch.nn.init.normal_(module.weight, mean=0.0, std=std)  #initialising the weights of all the linear layer
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)                    
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=std)
+
+
+    def forward(self, idx, targets=None):  #used for generation of new tokens, targets are None by default in case we want to use the pretrained model, and during generation
         #idx has shape (B, T) where T <= config.block_size and its obviously varible in this case
         B, T = idx.shape
         assert T <= self.config.block_size, f"cannot forward sequence of length {T} because GPT2 is limited to block size {self.config.block_size}"
 
-        pos = torch.arange(0, T, dtype=torch.long, device=idx.device)  #(T)
+        pos = torch.arange(0, T, dtype=torch.long, device=idx.device)  #(T), only need to pass this tensor to device as the rest are just modifications of this tensor, and they too will be on the device
         pos_emb = self.transformer.wpe(pos)  #(T, n_embd)
         tok_emb = self.transformer.wte(idx)      #(B, T, n_embd)
         x = tok_emb + pos_emb  #(B, T, n_embd), the same tokens in embedding space but now infused with 
@@ -137,9 +160,12 @@ class GPT(nn.Module):
         for b in self.transformer.h:
             x = b(x)
         
-        logits = self.transformer.ln_f(x)  #(B, T, vocab_size), passing it through the final linear layer so as to obtain the logits from the last token
-        logits = self.lm_head(logits)      #(B, T, vocab_size), the logits for the next token
-        return logits    
+        x = self.transformer.ln_f(x)  #(B, T, vocab_size), passing it through the final linear layer so as to obtain the logits from the last token
+        logits = self.lm_head(x)      #(B, T, vocab_size), the logits for the next token
+        loss = None
+        if targets is not None:
+            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1))  #flattening the logits to (B*T, vocab_size) and targets to (B*T), and then calculating the cross entropy loss, as it prefers flattened tensors
+        return logits, loss    
         #also since we feed the generation step also in batches it means that multiple sequences can
         #be generated at once
 
@@ -198,35 +224,105 @@ class GPT(nn.Module):
                 with torch.no_grad():
                     sd[k].copy_(sd_hf[k])
         return model
- 
+
+
+
+class DataLoader:
+    def __init__(self, B, T):  #B is the intended batch size
+        self.B = B
+        self.T = T
+        with open('input.txt', 'r') as f:
+            text = f.read()
+        
+        enc = tkn.get_encoding('gpt2')  #loading the encoding of gpt2
+        tokens = enc.encode(text)
+        self.tokens = torch.tensor(tokens)    #its good to not enforce anything on the GPU within APIs, as the user might want to use the API on CPU
+        print(f"loaded {len(self.tokens)} tokens")
+        print(f"one epoch: {len(self.tokens)//(B*T)} batches")  #as one epoch is completed when we go through the entire dataset once, so upon going through the entire dataset once we would have gone through these many batches
+        self.current_state = 0                                  #to maintain the state
+
+
+    def next_batch(self):
+        buf = self.tokens[self.current_state : self.current_state + self.B*self.T + 1]
+        x = buf[:-1].view(self.B, self.T)
+        y = buf[1:].view(self.B, self.T)
+
+        self.current_state += self.B*self.T  #go to the next batch
+        
+        #if out of bounds
+        if (self.current_state + self.B*self.T + 1) > len(self.tokens):
+            self.current_state = 0
+        
+        return x, y
+        
 
 #-------------------------
-num_return_sequences = 3
-max_length = 30
+import time
+torch.mps.empty_cache()  #clearing the cache
 
-model = GPT.from_pretrained('gpt2')
-model.eval()         #putting it in eval, altogether not necessary as we are not using dropout or batchnorm
-model.to(device)     #this sets up the model
+torch.manual_seed(1337)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(1337)
+elif torch.mps.is_available():
+    torch.mps.manual_seed(1337)
+
+#get the data batch
+train_loader = DataLoader(B=4, T=512)   #shld be 16, 1024
+
+torch.set_float32_matmul_precision("high")   #setting to tf32 instead of fp32, for faster computation
+
+#model = GPT.from_pretrained('gpt2')  #loading the pretrained model, if needed
+model = GPT(GPTConfig())
+model.to(device)     #this sets up the model 
+model = torch.compile(model)   #uses JIT compiling to speed up the training
+
+print(f"on device: {device}")
+
+#optimising/training
+optimiser = torch.optim.AdamW(model.parameters(), lr=3e-4)  #using AdamW as the optimiser
+for i in range(50):
+    t0 = time.time()
+    #---------------
+    x, y = train_loader.next_batch()
+    x, y = x.to(device), y.to(device)  #putting the data on the device
+    optimiser.zero_grad()
+    if torch.cuda.is_available():
+      with torch.autocast(device_type="cuda", dtype=torch.bfloat16):   #only now converts certain layers like linear to bf16
+        logits, loss = model(x, y)   #this feature of mixed precision training for now is only available on cuda devices
+    else:
+        logits, loss = model(x, y)
+    loss.backward()
+    optimiser.step()
+    #---------------
+    if torch.cuda.is_available():
+      torch.cuda.synchronize()  #waiting for the GPU to finish the computation, then move to the next line which is calculating the finish time
+    elif torch.mps.is_available():
+      torch.mps.synchronize()    
+    t1 = time.time()
+    dt = (t1 - t0) * 1000   #in ms
+    tokens_per_sec = (train_loader.B * train_loader.T) / (t1 - t0)
+    print(f'step: {i}   loss: {loss.item()}     dt: {dt: .2f}ms     tokens_per_sec: {tokens_per_sec: .2f}')   #loss also lives on GPU, then .item() moves it to CPU, and converts to a float 
+    print()
+
+import sys; sys.exit(0)
 
 #tokenising the input 
+model.eval()         #putting it in eval, altogether not necessary as we are not using dropout or batchnorm
+num_return_sequences = 5
+max_length = 50
 enc = tkn.get_encoding('gpt2')                                #loads the encoding of gpt2 
-tokens = enc.encode("Hello, I'm a language model, ")
+tokens = enc.encode("Hello, I'm a language model,")
 tokens = torch.tensor(tokens, dtype=torch.long)               #(12, ), as seen from the tiktokenizer app, chk it out :)
 tokens = tokens.unsqueeze(0).repeat(num_return_sequences, 1)  #(3, 12), so that we can generate 3 sequences at once
 idx = tokens.to(device)                                       #putting it on the device
 
+
 #generating !
 #here idx is (num_return_sequences, T), where T is the number of tokens in the input sequence, and num_return_sequences is number of batches
-torch.manual_seed(42)
-if torch.cuda.is_available():
-    torch.cuda.manual_seed(42)
-elif torch.mps.is_available():
-    torch.mps.manual_seed(42)
-
 while idx.size(1) < max_length:
     with torch.no_grad():
         idx = idx[:, -max_length:]          #trimming the input sequence to the max_length
-        logits = model(idx)                 #(num_return_sequences, T, vocab_size), where again, T is the number of tokens in the input sequence, and varies
+        logits, loss = model(idx)                 #(num_return_sequences, T, vocab_size), where again, T is the number of tokens in the input sequence, and varies
         logits = logits[:, -1, :]           #(num_return_sequences, vocab_size),  get only the last tokens from each of the batches, as what we essentially have now at this point is a bigram problem at hand
         probs = F.softmax(logits, dim=-1)   #(num_return_sequences, vocab_size), the probabilities of the next token
 

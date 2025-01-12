@@ -1,0 +1,16 @@
+if nvidia gpus are used with cuda api, then we can convert fp32 to tf32 which is just a 
+truncated version of 32 bits with the mantissa cut to 10 bits instead of 23, and the sign
+and bias exponent bits remain the same, where tf32 stands for tensorfloat-32, and the result
+of this is an 8time improvement over fp32 TOPS
+
+tf32 could be further reduced to bf16 where there are 7 mantissa bits 
+
+fp16 could also be used but it truncates the bias exponent bits too, from 8 to 5 and hence
+the range of nos decreases, hence differnet approaches like gradient scaling needs to be
+used, which does become an annoyance, hence bf16 is preferred
+
+now looking at torch.compile which can speed up the training code by a HUGE extent. Its
+basically like a compiler, like gcc for C/C++ code. It looks at the entire code as a single
+object and does not use the python interpreter, once the compiler object is formed, since
+it knows what is where, it does not go through the code in eager mode as a python interpreter
+would do. 
