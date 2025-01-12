@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import torch
 import math
 import torch.nn as nn
+import inspect
 from torch.nn import functional as F
 from transformers import GPT2LMHeadModel
 import tiktoken as tkn
@@ -172,6 +173,25 @@ class GPT(nn.Module):
         #be generated at once
 
 
+    def configure_optimisers(self, weight_decay, learning_rate, device):
+        param_dict = {pn: p for pn, p in self.named_parameters()}
+        param_dict = {pn: p for pn, p in param_dict.items() if p.requires_grad}  #only take those params which require grad
+
+        decay_params = [p for n, p in param_dict.items() if p.dim() >= 2]  #setting it such that only the params with dim >= 2 are decayed
+        nondecay_params = [p for n, p in param_dict.items() if p.dim() < 2]  #setting it such that only the params with dim < 2 are not decayed
+
+        optim_params = [
+            {'params': decay_params, 'weight_decay': weight_decay},
+            {'params': nondecay_params, 'weight_decay': 0.0}
+        ]
+
+        fused_available = 'fused' in inspect.signature(torch.optim.AdamW).parameters
+        use_fused = fused_available and 'cuda' in device   #will turn to False in case of mps, as fused kernels are meant to take advantage of the tensor cores, which are not present in mps
+        print(f"using fused adam: {use_fused}")
+        optimiser = torch.optim.AdamW(optim_params, lr=learning_rate, betas=(0.9, 0.95), eps=1e-8, fused=use_fused)
+        return optimiser
+
+
     @classmethod
     def from_pretrained(cls, model_type):
         """loads the pretrained GPT-2 model from huggingface, so that we can skip the training phase, and 
@@ -268,8 +288,17 @@ if torch.cuda.is_available():
 elif torch.mps.is_available():
     torch.mps.manual_seed(1337)
 
+#simulated batch size init 
+total_batch_size = 524288   #2**19  ~ 0.5M tokens, faithful to the GPT2 model
+B = 8
+T = 512
+assert total_batch_size % B == 0, "batch size must divide total batch size"
+grad_accum_steps = total_batch_size // B*T   #will give the number of forward backwards to be done before updating the weights
+print(f"total desired batch size: {total_batch_size}, grad_accum_steps: {grad_accum_steps}") 
+
+
 #get the data batch
-train_loader = DataLoader(B=4, T=512)   #shld be 16, 1024
+train_loader = DataLoader(B=8, T=512)   #shld be 16, 1024
 
 torch.set_float32_matmul_precision("high")   #setting to tf32 instead of fp32, for faster computation
 
@@ -300,19 +329,29 @@ def get_lr(step):
 
 
 #optimising/training
-optimiser = torch.optim.AdamW(model.parameters(), lr=3e-4, betas=(0.9, 0.95), eps=1e-8)  #using AdamW as the optimiser
+optimiser = model.configure_optimisers(weight_decay = 0.1, learning_rate = 6e-4, device=device)
 for step in range(max_steps):
     t0 = time.time()
     #---------------
-    x, y = train_loader.next_batch()
-    x, y = x.to(device), y.to(device)  #putting the data on the device
     optimiser.zero_grad()
-    if torch.cuda.is_available():
-      with torch.autocast(device_type="cuda", dtype=torch.bfloat16):   #only now converts certain layers like linear to bf16
-        logits, loss = model(x, y)   #this feature of mixed precision training for now is only available on cuda devices
-    else:
-        logits, loss = model(x, y)
-    loss.backward()
+    #------- inner loop for simulated batch size of 0.5M tokens
+    loss_accum = 0
+    for micro_step in range(grad_accum_steps):
+        x, y = train_loader.next_batch()
+        x, y = x.to(device), y.to(device)  #putting the data on the device
+        if torch.cuda.is_available():
+            with torch.autocast(device_type="cuda", dtype=torch.bfloat16):   #only now converts certain layers like linear to bf16
+                logits, loss = model(x, y)   #this feature of mixed precision training for now is only available on cuda devices 
+        else:
+            logits, loss = model(x, y)
+        loss /= grad_accum_steps     #to account for the fact that in each inidvidual mini batch, the loss is found and then added over
+        #all the other mini batches, but if we were to pass the 0.5M tokens as a singular batch, the loss would have a reduction of mean
+        #which means that it is divided by the number of tokens in each batch, now that is already taken care of in the individual batches, but
+        #amongst the grad_accum_steps number of batches, it is not, hence we divide by grad_accum_steps, to recover the factor back. So 
+        #it all has to do with the fact that losses generally have a reduction of mean and that has to be accounted for
+        loss_accum += loss.detach()
+        loss.backward()
+    #-------
     norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)  #clipping the gradients to 1.0
     lr = get_lr(step)
     for param_group in optimiser.param_groups:
@@ -324,9 +363,10 @@ for step in range(max_steps):
     elif torch.mps.is_available():
       torch.mps.synchronize()    
     t1 = time.time()
-    dt = (t1 - t0) * 1000   #in ms
-    tokens_per_sec = (train_loader.B * train_loader.T) / (t1 - t0)
-    print(f'step: {step} | loss: {loss.item()} | lr: {lr: .4e} | dt: {dt: .2f}ms | norm: {norm: .4f} | tokens_per_sec: {tokens_per_sec: .2f}')   #loss also lives on GPU, then .item() moves it to CPU, and converts to a float 
+    dt = t1 - t0   #in s
+    tokens_processed = train_loader.B * train_loader.T * grad_accum_steps  #across the large batch 
+    tokens_per_sec = tokens_processed / dt
+    print(f'step: {step} | loss: {loss_accum.item(): .6f} | lr: {lr: .4e} | dt: {dt: .4f}s | norm: {norm: .4f} | tokens_per_sec: {tokens_per_sec: .2f}tok/sec')   #loss also lives on GPU, then .item() moves it to CPU, and converts to a float 
 
 import sys; sys.exit(0)
 
