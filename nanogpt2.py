@@ -23,7 +23,7 @@ else:
 #attributes as variables defined under the class for which the decorator is called
 class GPTConfig:
     block_size: int = 1024     #number of tokens in the context window
-    vocab_size: int = 50257    #number of unique tokens in the vocabulary, 50000 BPE megres, 256 byte tokens, 1 <|endoftext|> token 
+    vocab_size: int = 50257    #number of unique tokens in the vocabulary, 50000 BPE megres, 256 byte tokens, 1 <|endoftext|> token, matches the GPT2 tokeniser
     n_layer: int = 12          #number of blocks in the model
     n_head: int = 12           #number of heads in the multiheadattention
     n_embd: int = 768
@@ -66,7 +66,9 @@ class CausalSelfAttention(nn.Module):
         #can vary from 1 to T tokens
 
         y = att @ v  # (B, n_head, T, T) @ (B, n_head, T, head_size) -> (B, n_head, T, head_size)
-        #here we get the weighted value vector for wach token for each batch and for each head
+        #here we get the weighted value vector for each token for each batch and for each head
+
+        #y = F.scaled_dot_product_attention(q, k, v, is_causal=True)  #flash attention part, runs proprly only on cuda with triton installed, so use accordingly
 
         y = y.transpose(1, 2).contiguous().view(B, T, C)  #here we concatenate those value vectors for a
         #token obtained from all the diff heads across all the tokens and across all the batches, so now 
@@ -272,15 +274,34 @@ train_loader = DataLoader(B=4, T=512)   #shld be 16, 1024
 torch.set_float32_matmul_precision("high")   #setting to tf32 instead of fp32, for faster computation
 
 #model = GPT.from_pretrained('gpt2')  #loading the pretrained model, if needed
-model = GPT(GPTConfig())
+model = GPT(GPTConfig(vocab_size=50304))   #changing the vocab size to be power of 2, making it a nice number, hence making training faster, keep in mind that the other tokens dont end up getting used 
 model.to(device)     #this sets up the model 
 model = torch.compile(model)   #uses JIT compiling to speed up the training
 
 print(f"on device: {device}")
 
+
+#implementing cosine decay of learning rate with linear warmup, this is a learning rate scheduler
+max_lr = 6e-4
+min_lr = max_lr * 0.1
+warmup_steps = 10
+max_steps = 50
+def get_lr(step):
+    #linear warmup
+    if step < warmup_steps:
+        return max_lr * (step+1) / warmup_steps
+    if step > max_steps:
+        return min_lr
+    #cosine decay
+    decay_ratio = (step - warmup_steps) / (max_steps - warmup_steps)
+    assert 0 <= decay_ratio <= 1
+    coeff = 0.5 * (1 + math.cos(math.pi * decay_ratio))
+    return min_lr + coeff * (max_lr - min_lr)
+
+
 #optimising/training
-optimiser = torch.optim.AdamW(model.parameters(), lr=3e-4)  #using AdamW as the optimiser
-for i in range(50):
+optimiser = torch.optim.AdamW(model.parameters(), lr=3e-4, betas=(0.9, 0.95), eps=1e-8)  #using AdamW as the optimiser
+for step in range(max_steps):
     t0 = time.time()
     #---------------
     x, y = train_loader.next_batch()
@@ -292,6 +313,10 @@ for i in range(50):
     else:
         logits, loss = model(x, y)
     loss.backward()
+    norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)  #clipping the gradients to 1.0
+    lr = get_lr(step)
+    for param_group in optimiser.param_groups:
+        param_group['lr'] = lr
     optimiser.step()
     #---------------
     if torch.cuda.is_available():
@@ -301,8 +326,7 @@ for i in range(50):
     t1 = time.time()
     dt = (t1 - t0) * 1000   #in ms
     tokens_per_sec = (train_loader.B * train_loader.T) / (t1 - t0)
-    print(f'step: {i}   loss: {loss.item()}     dt: {dt: .2f}ms     tokens_per_sec: {tokens_per_sec: .2f}')   #loss also lives on GPU, then .item() moves it to CPU, and converts to a float 
-    print()
+    print(f'step: {step} | loss: {loss.item()} | lr: {lr: .4e} | dt: {dt: .2f}ms | norm: {norm: .4f} | tokens_per_sec: {tokens_per_sec: .2f}')   #loss also lives on GPU, then .item() moves it to CPU, and converts to a float 
 
 import sys; sys.exit(0)
 
