@@ -196,7 +196,7 @@ class BigramLanguageModel(nn.Module):
             probs = F.softmax(logits, dim=-1)  #(B, C)
             idx_next = torch.multinomial(probs, num_samples=1)  # (B, 1)
             #append the sampled char to the idx
-            print(decode([idx_next.view(-1)[0].item()]), end="")  #to see the progress, will print each char
+            #print(decode([idx_next.view(-1)[0].item()]), end="")  #to see the progress, will print each char
             idx = torch.cat([idx, idx_next], dim=1)  #(B, T+1)
         return idx
 
@@ -247,3 +247,5 @@ def main():
 
 if __name__ == '__main__':
     main()  #goes to show the importance of simple python good practices
+
+#got this model to 0.87, lets see if we can get better than this in the GPT2 model

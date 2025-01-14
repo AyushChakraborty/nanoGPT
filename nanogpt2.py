@@ -295,8 +295,10 @@ class DataLoader:
 
 #-------------------------
 import time
-torch.mps.empty_cache()      #clearing the cache
-
+if torch.mps.is_available():
+    torch.mps.empty_cache()      #clearing the cache
+elif torch.cuda.is_available():
+    torch.cuda.empty_cache()
 
 #set up DDP(distributed data parallel) for multi-gpu training if present in CUDA specifically
 #torchrun command here sets up the env vars like RANK, LOCAL_RANK, WORLD_SIZE
@@ -353,14 +355,14 @@ model.to(device)                                   #this sets up the model
 model = torch.compile(model)                       #uses JIT compiling to speed up the training
 if ddp:
     model = DDP(model, device_ids=[ddp_local_rank])#setting up the model for DDP, if DDP is used
-    
+
 raw_model = model.module if ddp else model        
 
 #implementing cosine decay of learning rate with linear warmup, this is a learning rate scheduler
 max_lr = 6e-4
 min_lr = max_lr * 0.1
 warmup_steps = 10
-max_steps = 50
+max_steps = 150
 def get_lr(step):
     #linear warmup
     if step < warmup_steps:
@@ -382,7 +384,7 @@ for step in range(max_steps):
     #---------------
     optimiser.zero_grad()
     #------- inner loop for simulated batch size of 0.5M tokens
-    loss_accum = 0
+    loss_accum = 0                            #if DDP is used, then the loss is summed across all the processes
     for micro_step in range(grad_accum_steps):
         x, y = train_loader.next_batch()
         x, y = x.to(device), y.to(device)                                    #putting the data on the device
