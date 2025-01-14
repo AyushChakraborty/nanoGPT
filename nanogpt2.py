@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+# from torch.utils.tensorboard import SummaryWriter
 from torch.nn.parallel import DistributedDataParallel as DDP    #if DDP ends up getting used, need to wrap the model around it
 from torch.distributed import init_process_group, destroy_process_group, all_reduce, ReduceOp
 from transformers import GPT2LMHeadModel
@@ -293,6 +294,32 @@ class DataLoader:
 
 
 
+def save_checkpoints(model, optimiser, step, filename="nanogpt2.pth", ):
+    """saves the model and the optimiser state dict to a file, so that
+    if the training gets interrupted, we can resume from the last checkpoint"""
+    checkpoint = {
+        'model_state_dict': model.state_dict(),
+        'optimiser_state_dict': optimiser.state_dict(),
+        'step': step
+    }
+    torch.save(checkpoint, filename)
+    print(f"checkpoint saved to {filename}")
+
+
+
+def load_checkpoints(filename, model, optimiser):
+    checkpoint = torch.load(filename, map_location=device)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    print(f"loaded model from {filename}")
+
+    optimiser.load_state_dict(checkpoint['optimiser_state_dict'])
+    print(f"loaded optimiser from {filename}")
+
+    step = checkpoint['step']
+    return step
+
+
+
 #-------------------------
 import time
 if torch.mps.is_available():
@@ -359,9 +386,9 @@ if ddp:
 raw_model = model.module if ddp else model        
 
 #implementing cosine decay of learning rate with linear warmup, this is a learning rate scheduler
-max_lr = 6e-4
-min_lr = max_lr * 0.1
-warmup_steps = 10
+max_lr = 12e-4
+min_lr = max_lr * 0.01
+warmup_steps = 40
 max_steps = 150
 def get_lr(step):
     #linear warmup
@@ -378,8 +405,21 @@ def get_lr(step):
 
 #optimising/training
 optimiser = raw_model.configure_optimisers(weight_decay = 0.1, learning_rate = 6e-4, device=device)
+resumed_step = 0
+save_interval = 4
+train_loss_log = []
+val_loss_log = []
 
-for step in range(max_steps):
+#check if checkpoint exists
+checkpoint_file = "nanogpt2.pth"
+if os.path.exists(checkpoint_file):
+    try:
+        resumed_step = load_checkpoints(checkpoint_file, raw_model, optimiser)
+    except Exception as e:
+        print(f"error loading checkpoint: {e}")
+    print(f"resuming from step {resumed_step}")
+
+for step in range(resumed_step, max_steps):
     t0 = time.time()
     #---------------
     optimiser.zero_grad()
@@ -412,7 +452,7 @@ for step in range(max_steps):
     optimiser.step()
     #---------------
     if torch.cuda.is_available():
-      torch.cuda.synchronize()             #waiting for the GPU to finish the computation, then move to the next line which is calculating the finish time
+      torch.cuda.synchronize()                      #waiting for the GPU to finish the computation, then move to the next line which is calculating the finish time
     elif torch.mps.is_available():
       torch.mps.synchronize()    
     t1 = time.time()
@@ -420,6 +460,10 @@ for step in range(max_steps):
     tokens_processed = train_loader.B * train_loader.T * grad_accum_steps * ddp_world_size        #across the large batch 
     tokens_per_sec = tokens_processed / dt
     print(f'step: {step} | loss: {loss_accum.item(): .6f} | lr: {lr: .4e} | dt: {dt: .4f}s | norm: {norm: .4f} | tokens_per_sec: {tokens_per_sec: .2f}tok/sec')   #loss also lives on GPU, then .item() moves it to CPU, and converts to a float 
+    if step % save_interval == 0 and master_process:    #ensures the only the master process saves the checkpoints
+        save_checkpoints(raw_model, optimiser, step)    #saving the checkpoints after each step
+    train_loss_log.append(loss_accum.item())            #logging the training loss for each step
+        
 
 if ddp:
     destroy_process_group()                 #cleaning up the process group, as the training is done
@@ -459,3 +503,5 @@ for s in range(num_return_sequences):
     tokens = idx[s, :max_length].tolist()
     decoded = enc.decode(tokens)
     print(":: ", decoded)
+
+#todo, implement ability to save model checkpoints and also to load them
