@@ -1,4 +1,4 @@
-# This is an implementation of a small version of GPT(with a little under 10M paramters) from Andrej Karpathy's zero to hero series
+# This is an implementation of a small version of GPT1(with a little under 10M paramters) and GPT2(124M params) from Andrej Karpathy's zero to hero series
 
 > ## The transformer model architecture
 > ![nanoGPT](image-1.png)
@@ -33,3 +33,6 @@
 ### pretty good for a "nano" GPT!!
 
 ### This will be scaled up to a certain degree, so keep an eye!
+
+### TODO: make a server script that can show the generated shakespear content to the user, given they give
+### in the prompt, also have to beautify the README.md page significantly, mention the training process(quite a ### story) and add more images(why not)
