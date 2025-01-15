@@ -35,4 +35,4 @@
 ### This will be scaled up to a certain degree, so keep an eye!
 
 ### TODO: make a server script that can show the generated shakespear content to the user, given they give
-### in the prompt, also have to beautify the README.md page significantly, mention the training process(quite a ### story) and add more images(why not)
+### in the prompt, also have to beautify the README.md page significantly, mention the training process(quite a  story) and add more images(why not)
