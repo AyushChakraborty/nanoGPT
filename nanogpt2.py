@@ -2,7 +2,6 @@ from dataclasses import dataclass
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
-# from torch.utils.tensorboard import SummaryWriter
 from torch.nn.parallel import DistributedDataParallel as DDP    #if DDP ends up getting used, need to wrap the model around it
 from torch.distributed import init_process_group, destroy_process_group, all_reduce, ReduceOp
 from transformers import GPT2LMHeadModel
@@ -294,7 +293,7 @@ class DataLoader:
 
 
 
-def save_checkpoints(model, optimiser, step, filename="nanogpt2.pth", ):
+def save_checkpoints(model, optimiser, step, filename="nanogpt2.pth"):
     """saves the model and the optimiser state dict to a file, so that
     if the training gets interrupted, we can resume from the last checkpoint"""
     checkpoint = {
@@ -503,5 +502,3 @@ for s in range(num_return_sequences):
     tokens = idx[s, :max_length].tolist()
     decoded = enc.decode(tokens)
     print(":: ", decoded)
-
-#todo, implement ability to save model checkpoints and also to load them
