@@ -10,9 +10,9 @@ files.download('nanoGPT.pth')
 print("Model saved successfully!")
 '''
 
-from bigram import BigramLanguageModel
+from GPTs.bigram import BigramLanguageModel
 import warnings
-import bigram as bigram
+import GPTs.bigram as bigram
 import torch
 import sys
 
@@ -20,7 +20,7 @@ def main():
     warnings.simplefilter(action='ignore', category=FutureWarning)
     device = torch.device("mps" if torch.mps.is_available() else "cpu")  
 
-    bigram.model.load_state_dict(torch.load('nanoGPT.pth', map_location=device)) #move the saved
+    bigram.model.load_state_dict(torch.load('./saved_models/nanoGPT.pth', map_location=device)) #move the saved
     #model state dict into the device(mps) 
     bigram.model.to(device)  #then also moved to the device
     bigram.model.eval()

@@ -20,7 +20,7 @@ dropout_prob = 0.2
 torch.manual_seed(1337)
 
 #load the data
-with open('input.txt', 'r', encoding='utf-8') as f:
+with open('./texts/input.txt', 'r', encoding='utf-8') as f:
     text = f.read()
 
 #preprocess the data

@@ -410,7 +410,7 @@ train_loss_log = []
 val_loss_log = []
 
 #check if checkpoint exists
-checkpoint_file = "nanogpt2.pth"
+checkpoint_file = "./saved_models/nanogpt2.pth"
 if os.path.exists(checkpoint_file):
     try:
         resumed_step = load_checkpoints(checkpoint_file, raw_model, optimiser)
