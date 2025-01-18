@@ -10,9 +10,9 @@ files.download('nanoGPT.pth')
 print("Model saved successfully!")
 '''
 
-from src.bigram import BigramLanguageModel
+from bigram import BigramLanguageModel
 import warnings
-import src.bigram as bigram
+import bigram as bigram
 import torch
 import sys
 
