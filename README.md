@@ -1,7 +1,7 @@
 # This is an implementation of a small version of GPT1(with a little under 10M paramters) and GPT2(124M params) from Andrej Karpathy's zero to hero series
 
 > ## The transformer model architecture
-> ![nanoGPT](image-1.png)
+> ![nanoGPT](./images/image-1.png)
 
 ### some other vidoes which helped me understand transformers and the mechanism behind attention:
 
@@ -18,7 +18,7 @@
 > ### https://colah.github.io/
 
 ### And last but not the least, the zero to hero series by none other than Mr Andrej Karpathy himself
-> ### [![ak](image-2.png)](https://www.youtube.com/watch?v=VMj-3S1tku0&list=PLAqhIrjkxbuWI23v9cThsA9GvCAUhRvKZ)
+> ### [![ak](./images/image-2.png)](https://www.youtube.com/watch?v=VMj-3S1tku0&list=PLAqhIrjkxbuWI23v9cThsA9GvCAUhRvKZ)
 
  ### I already pretrained the model and saved the models params as a torch state dict, which is present in nanoGPT.pth, here is how u can generate some of your own Shakespearean text 
  ### ``` python3 generation.py ```
@@ -26,10 +26,10 @@
  ### The upper cap is 5000 words(for no apparent reason)
 
 ### an egs i liked(from first iteration of nanoGPT):
-![alt text](image.png)
+![alt text](./images/image.png)
 
 ### from a newer one which can take in prompts(starting text)
-![alt text](image-3.png)
+![alt text](./images/image-3.png)
 ### pretty good for a "nano" GPT!!
 
 ### This will be scaled up to a certain degree, so keep an eye!
