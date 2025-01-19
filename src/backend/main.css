@@ -1,6 +1,9 @@
-#img {
-    position: absolute;
-    top: 20%;
-    left: 50%; 
-}
+/* @import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities"; */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
+
+ 
