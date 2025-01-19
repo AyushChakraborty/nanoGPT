@@ -1,0 +1,62 @@
+@font-face {font-family: shak; src: url('shakfont.ttf');}
+
+
+body {
+    font-family: shak;
+    background-color: #121212; 
+    color: rgb(149, 16, 8);
+    margin: 0;
+    padding: 0;
+}
+
+#title {
+    position: relative;
+    font-size: 2rem;
+    font-weight: 700;
+    color: rgb(149, 16, 8);
+    margin-bottom: 1rem;
+    left: 4.5%;
+}
+
+#image {
+    width: 100%;
+    height: 100%;
+    border-radius: 2;
+}
+
+#caption {
+    position: relative;
+    left: 3%;
+    font-size: 1.3rem;
+    color: rgb(149, 16, 8);
+}
+
+#instructions {
+    position: absolute;
+    font-size: 1.4rem;
+    top: 0%;
+    left: 60%;
+}
+
+#prompt {
+    position: absolute;
+    font-size: 1.4rem;
+    top: 30%;
+    left: 60%;
+}
+
+#promptinput {
+    position: inherit;
+    left: 0%;
+    border-radius: 10px; 
+}
+
+#promptinput input {
+    font-family: shak;
+    font-size: 26px; 
+    border: none; 
+    border-radius: 10px; 
+    background-color: grey; 
+    padding: 5px; 
+}
+ 
