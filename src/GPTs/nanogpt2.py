@@ -502,3 +502,8 @@ for s in range(num_return_sequences):
     tokens = idx[s, :max_length].tolist()
     decoded = enc.decode(tokens)
     print(":: ", decoded)
+
+#step 268, training loss, 2.14 with norm 1.94, training stopped there, 
+#can build diff modes of the site, one for shakespear with gpt1 and 2, 
+#other for normal gpt mode with the preloaded weights of gpt2,
+#a normal conversational gpt basically

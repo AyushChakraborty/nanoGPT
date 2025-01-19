@@ -14,3 +14,13 @@ basically like a compiler, like gcc for C/C++ code. It looks at the entire code 
 object and does not use the python interpreter, once the compiler object is formed, since
 it knows what is where, it does not go through the code in eager mode as a python interpreter
 would do. 
+
+some notes related to server side domain
+
+in the C server implemenation here its designed to be multithreaded, hence when we put in
+localhost:8080/main.html say, a thread gets created which handles this req, so when the
+server sends main.html to the browser(client) as a res, then the browser being a special
+client, parses the html file and sees the requirement of main.css and main.jpg, and 
+send separate GET reqs to the server in different thread to the server, hence we end up seeing
+multiple GET reqs by the client even though we only entered localhost:8080/main.html
+
