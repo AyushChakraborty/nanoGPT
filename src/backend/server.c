@@ -44,7 +44,10 @@ const char *get_mime_type(const char *file_extension) {
     */
     if (strcasecmp(file_extension, "html") == 0 || strcasecmp(file_extension, "htm") == 0) {
         return "text/html";
-    } else if (strcasecmp(file_extension, "txt") == 0) {
+    }else if (strcasecmp(file_extension, "css") == 0) {
+        return "text/css";
+    }   //to also handle css files
+     else if (strcasecmp(file_extension, "txt") == 0) {
         return "text/plain";
     } else if (strcasecmp(file_extension, "jpg") == 0 || strcasecmp(file_extension, "jpeg") == 0) {
         return "image/jpeg";
@@ -154,7 +157,7 @@ void *handle_client(void *arg) {
         //also REG_EXTENDED flag modifies how the regex is interpreted, with this flag, POSIX extended regex is used
         //which allows more modern, flexible syntax while specifying the regex pattern to be compiled
         regmatch_t matches[2];
-
+        printf("req from client is: %s\n", buffer);
         if (regexec(&regex, buffer, 2, matches, 0) == 0) {   //if the req contents in the buffer matches that in
         //the pattern compiled into regex variable, then do the following
 

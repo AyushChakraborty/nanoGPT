@@ -14,19 +14,24 @@
         <img src="shakespear.jpg" alt="fancyshake" />
     </div>
     <div id="caption">
-        <p>hopefully shakespear approves of the generation :)</p>
+        <p>Hopefully Shakespeare approves of the generation :)</p>
     </div>
     <div id="prompt">
         <p>Enter your prompt here:</p>
         <div id="promptinput">
-            <input type="text" id="prompt" name="prompt" />
+            <form action="/submit" method="POST" target="_self">  
+                <input type="text" id="prompt" name="prompt" placeholder="Type your prompt" />
+                <button type="submit">Enter</button>
+            </form>
         </div>
     </div>
     <div id="instructions">
-        <p>Keep the following points regarding the prompt in mind too: </p>
-        <p>Should only be english letters, with basic punctuation, space</p>
-        <p>In a shakespearean format(roughly)</p>
-        <p>If you want auto generation enter 0</p>
+        <p>Keep the following points regarding the prompt in mind too:</p>
+        <ul>
+            <li>Should only include English letters, with basic punctuation, and spaces.</li>
+            <li>Follow a Shakespearean format (roughly).</li>
+            <li>If you want auto-generation, enter <strong>0</strong>.</li>
+        </ul>
     </div>
 </body>
 </html>

@@ -1,5 +1,7 @@
-@font-face {font-family: shak; src: url('shakfont.ttf');}
-
+@font-face {
+    font-family: shak;
+    src: url('shakfont.ttf');
+}
 
 body {
     font-family: shak;
@@ -20,8 +22,8 @@ body {
 
 #image {
     width: 100%;
-    height: 100%;
-    border-radius: 2;
+    height: auto;
+    border-radius: 2px;
 }
 
 #caption {
@@ -32,23 +34,30 @@ body {
 }
 
 #instructions {
-    position: absolute;
+    position: absolute; /* Allows precise placement */
+    top: 10px;          /* Distance from the top */
+    right: 150px;        /* Distance from the right */
     font-size: 1.4rem;
-    top: 0%;
-    left: 60%;
+    text-align: right;
+    max-width: 300px;   /* Ensures it doesn't stretch too wide */
+    line-height: 1.5;   /* Improves readability */
 }
 
 #prompt {
     position: absolute;
+    top: 250px;
+    right: 150px;
     font-size: 1.4rem;
-    top: 30%;
-    left: 60%;
+    margin: 2rem auto;
+    max-width: 300px;
+    text-align: center;
 }
 
-#promptinput {
-    position: inherit;
-    left: 0%;
-    border-radius: 10px; 
+#promptinput form {
+    display: flex;               /* Makes input and button align horizontally */
+    justify-content: flex-start; /* Aligns items to the start of the row */
+    align-items: center;         /* Ensures vertical alignment of input and button */
+    gap: 10px;                   /* Adds horizontal spacing between the input and button */
 }
 
 #promptinput input {
@@ -57,6 +66,23 @@ body {
     border: none; 
     border-radius: 10px; 
     background-color: grey; 
-    padding: 5px; 
+    padding: 10px;
+    width: 70%;
+    box-sizing: border-box;
 }
- 
+
+#promptinput button {
+    font-family: shak;
+    font-size: 20px;
+    border: none;
+    border-radius: 10px;
+    background-color: rgb(149, 16, 8);
+    color: white;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+#promptinput button:hover {
+    background-color: rgb(200, 50, 40);
+}
