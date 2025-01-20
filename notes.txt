@@ -24,3 +24,8 @@ client, parses the html file and sees the requirement of main.css and main.jpg, 
 send separate GET reqs to the server in different thread to the server, hence we end up seeing
 multiple GET reqs by the client even though we only entered localhost:8080/main.html
 
+also the input field needs to be within the form so that the contents get sent as a req
+to the server, also if we put "/submit" as value for action attr, then the req gets 
+sent to the endpoint /submit, more specifically, it gets sent to localhost:8080/submit, but
+that is given its a POST method, if its GET it gets appended to the url itself, where we say
+get localhost:8080/submit?username=something, and then it can be parsed that way
