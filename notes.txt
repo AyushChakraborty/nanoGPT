@@ -29,3 +29,8 @@ to the server, also if we put "/submit" as value for action attr, then the req g
 sent to the endpoint /submit, more specifically, it gets sent to localhost:8080/submit, but
 that is given its a POST method, if its GET it gets appended to the url itself, where we say
 get localhost:8080/submit?username=something, and then it can be parsed that way
+
+(note: never ever use git lfs, its a pain and annoying, asks for ssh to be entered 5 times
+everytime, and still does not push large files to the repo, very bad, instead what I did
+was put the saved_models folder to .gitignore so that they are not tracked, its better
+and also does not actually expose the params of the model)
