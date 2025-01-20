@@ -1,3 +1,0 @@
-*.pth filter=lfs diff=lfs merge=lfs -text
-src/saved_models/nanoGPT.pth filter=lfs diff=lfs merge=lfs -text
-src/saved_models/nanogpt2.pth filter=lfs diff=lfs merge=lfs -text
