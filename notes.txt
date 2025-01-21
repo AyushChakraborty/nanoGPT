@@ -34,3 +34,14 @@ get localhost:8080/submit?username=something, and then it can be parsed that way
 everytime, and still does not push large files to the repo, very bad, instead what I did
 was put the saved_models folder to .gitignore so that they are not tracked, its better
 and also does not actually expose the params of the model)
+
+another issue I ran into was when I submitted my form data, it did show up as GET req on 
+my server logs, but a new tab opened up every time which represented the form tab and this was\
+very annoying, so i decided the prevent the defualt behaviour of the "submit" event which was
+attatched to the from DOM element, but this prevented the sending of the GET req too, but ended
+up adjusting the server code to serve the same file itself which was present in the Referer
+header in the GET req sent by the client when the req has "submit?prompt=" in it, hence instead
+of serving the client the form file, it serves it the same file in where it was
+
+
+. might not work as expected in regex in POSIX, as its a lazy quantifier
