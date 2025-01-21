@@ -144,30 +144,53 @@ void *handle_client(void *arg) {
     //by the server socket when the client wants to send a req to the server
     int client_fd = *((int *)arg);
     char *buffer = (char *)malloc(BUFFER_SIZE * sizeof(char));   //allocating memory for the buffer
+    char *buffer_ = (char *)malloc(BUFFER_SIZE * sizeof(char));
 
 
     //recieve the req data from the client and store it in the buffer
     ssize_t bytes_received = recv(client_fd, buffer, BUFFER_SIZE, 0);
     if (bytes_received > 0) {
+        memcpy(buffer_, buffer, bytes_received);
+        buffer_[bytes_received] = '\0';
         //see if req is GET
         regex_t regex;    //is used to hold the compiled regular exp, which is later
         //used to match against the http req received from the client 
+        regex_t referer_regex;   //regex for the referer
         regcomp(&regex, "^GET /([^ ]*) HTTP/1", REG_EXTENDED);   //the compiled format is then stored in regex var
         //the format we are looking for is of type say "GET /index.html HTTP/1.1"
         //also REG_EXTENDED flag modifies how the regex is interpreted, with this flag, POSIX extended regex is used
         //which allows more modern, flexible syntax while specifying the regex pattern to be compiled
         regmatch_t matches[2];
-        printf("req from client is: %s\n", buffer);
-        if (regexec(&regex, buffer, 2, matches, 0) == 0) {   //if the req contents in the buffer matches that in
+        regmatch_t matches_referer[2];   //for the referer
+        printf("req from client is: %s\n", buffer_);
+        if (regexec(&regex, buffer_, 2, matches, 0) == 0) {   //if the req contents in the buffer matches that in
         //the pattern compiled into regex variable, then do the following
 
             //extract the filename from req and decode url
-            buffer[matches[1].rm_eo] = '\0';   //setting the end offset of the captured group to be null byte,
+            buffer_[matches[1].rm_eo] = '\0';   //setting the end offset of the captured group to be null byte,
             //essentially isolating this substring in buffer
-            const char *url_encoded_filename = buffer + matches[1].rm_so*sizeof(char);    //moves the pointer to the start
+            const char *url_encoded_filename = buffer_ + matches[1].rm_so*sizeof(char);    //moves the pointer to the start
             //of the matched substring, as buffer itself is a pointer to the actual buffer object
             printf("url encoded filename: %s\n", url_encoded_filename);
-            char *file_name = url_decode(url_encoded_filename);   
+
+            //the case when a form data is present in the GET req, which is indicated
+            //by the presence of the word "submit?prompt="
+            printf("Checking if 'submit?prompt=' is in: %s\n", url_encoded_filename);
+            if (strstr(url_encoded_filename, "submit?prompt=") != NULL) {
+                printf("BUFFER: %s\n", buffer);
+                regcomp(&referer_regex, "Referer: [^ ]*/([^ ]*\\.html)", REG_EXTENDED);
+                int check = regexec(&referer_regex, buffer, 2, matches_referer, 0);
+                printf("regex info: %d\n", check);
+                if (regexec(&referer_regex, buffer, 2, matches_referer, 0) == 0) {
+                    printf("in intended area\n");
+                    buffer[matches_referer[1].rm_eo] = '\0';
+                    url_encoded_filename = buffer + matches_referer[1].rm_so*sizeof(char);
+                    printf("url encoded filename from form data: %s\n", url_encoded_filename);
+                }regfree(&referer_regex);
+            }
+            // buffer = buffer_;
+            char *file_name = url_decode(url_encoded_filename);     //this will get the
+            //file name now anyways
             printf("decoded file name: %s\n", file_name);
 
 

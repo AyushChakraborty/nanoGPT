@@ -19,7 +19,7 @@
     <div id="prompt">
         <p>Enter your prompt here:</p>
         <div id="promptinput">
-            <form action="/submit" method="POST" target="_self">  
+            <form action="/submit" method="GET" target="_self" id="formele">  
                 <input type="text" id="prompt" name="prompt" placeholder="Type your prompt" />
                 <button type="submit">Enter</button>
             </form>
@@ -34,4 +34,20 @@
         </ul>
     </div>
 </body>
+<!-- <script>
+    //to prevent the window from opening when form data is sent, stay in the same page
+    //the submit event fires when the form is submitted, so to prevent any form tab
+    //from opening we just do event.preventDefault() of that, so we attach an event
+    //listener to the form element
+    const form = document.getElementById("formele");
+    form.addEventListener("submit", (event) => {
+        //event.preventDefault();  
+        //have to format the form input values from the DOM appropriately using
+        //FormData
+        //use fetch() API to send the form data to the server, where the data is in the 
+        //serialised format
+        //use fetch() APIs then to process the servers response and update UI without
+        //reloading page
+    })
+</script> -->
 </html>
