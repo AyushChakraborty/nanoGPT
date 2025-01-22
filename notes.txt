@@ -45,3 +45,10 @@ of serving the client the form file, it serves it the same file in where it was
 
 
 . might not work as expected in regex in POSIX, as its a lazy quantifier
+
+also note to self, to put a folder in .gitignore which was already being tracked by git
+we have to first remove it from being tracked and then put it in .gitignore, that can be done
+by
+    git rm -r --cached folder
+
+then add that folder to .gitignore
