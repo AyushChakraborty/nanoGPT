@@ -1,5 +1,11 @@
 //the server script
 
+/*slight bug here, if we enter the input field again after inputting it already, the 
+referer now is the requesting url which is that which contains the query of the prev
+field, hence when we try to enter another thing in it, it tries to retrieve the query
+file, which actually does not exist, so have to try to use POST, and see if it works
+*/
+
 #include <stdio.h>
 #include <string.h>
 #include <strings.h>       //needed for strcasecmp()
