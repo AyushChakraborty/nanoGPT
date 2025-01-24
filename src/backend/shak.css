@@ -34,30 +34,56 @@ body {
 }
 
 #instructions {
-    position: absolute; /* Allows precise placement */
-    top: 10px;          /* Distance from the top */
-    right: 150px;        /* Distance from the right */
+    position: relative;  
+    top: 10px;          
+    left: 10px;        
     font-size: 1.4rem;
     text-align: right;
-    max-width: 300px;   /* Ensures it doesn't stretch too wide */
-    line-height: 1.5;   /* Improves readability */
+    max-width: 300px;   
+    line-height: 1.5;   
 }
 
 #prompt {
     position: absolute;
-    top: 250px;
-    right: 150px;
+    top: 6px;
+    right: 170px;
     font-size: 1.4rem;
     margin: 2rem auto;
     max-width: 300px;
     text-align: center;
 }
 
+#bin {
+    position: absolute;
+    top: 45px;
+    right: 40px;
+}
+
+#pin {
+    position: relative;
+    margin-bottom: 10px; 
+    margin-top: -20px; /*moves the text up*/
+    text-align: left;
+    font-size: 30px;
+    right: 140px;
+    z-index: 1; 
+}
+
+#promptinput {
+    position: relative; 
+    display: flex;
+    flex-direction: row; 
+    justify-content: flex-start;
+    align-items: center;
+    z-index: 0;
+}
+
 #promptinput form {
-    display: flex;               /* Makes input and button align horizontally */
-    justify-content: flex-start; /* Aligns items to the start of the row */
-    align-items: center;         /* Ensures vertical alignment of input and button */
-    gap: 10px;                   /* Adds horizontal spacing between the input and button */
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    width: 170%; 
 }
 
 #promptinput input {
@@ -67,8 +93,10 @@ body {
     border-radius: 10px; 
     background-color: grey; 
     padding: 10px;
-    width: 70%;
+    width: 200%;
     box-sizing: border-box;
+    margin-right: 10px; 
+    z-index: 0; 
 }
 
 #promptinput button {
