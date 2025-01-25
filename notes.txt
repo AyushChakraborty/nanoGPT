@@ -52,3 +52,12 @@ by
     git rm -r --cached folder
 
 then add that folder to .gitignore
+
+
+another lesson learnt is that within a loop, when something is printed to and no '\n' is 
+encountered, then, all the print values get stored within the buffer, and that buffer is flushed
+to stdout only when the loop is completed, so to prevent that flush=True is set within print
+hence the buffer is flushed everytime. In case of a normal prog like for i in range(2): print(i)
+the '\n' is encountered every time, hence for every iter of the loop, the buffer is flushed, but
+in my case I set end="" not "\n" hence all the values keep getting stored in the buffer. Same
+thing occurs for writing to a file, where file.flush() needs to be done

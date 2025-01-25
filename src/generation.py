@@ -10,11 +10,9 @@ files.download('nanoGPT.pth')
 print("Model saved successfully!")
 '''
 
-from GPTs.bigram import BigramLanguageModel
 import warnings
 import GPTs.bigram as bigram
 import torch
-import sys
 
 def main():
     warnings.simplefilter(action='ignore', category=FutureWarning)

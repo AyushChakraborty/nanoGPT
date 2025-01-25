@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+import time
 
 #hyperparameters
 device = torch.device("mps" if torch.mps.is_available() else "cpu")  #from now on, will utilize the GPU
@@ -20,7 +21,7 @@ dropout_prob = 0.2
 torch.manual_seed(1337)
 
 #load the data
-with open('./texts/input.txt', 'r', encoding='utf-8') as f:
+with open('../texts/input.txt', 'r', encoding='utf-8') as f:
     text = f.read()
 
 #preprocess the data
@@ -187,17 +188,25 @@ class BigramLanguageModel(nn.Module):
         return logits, loss
     
     def generate(self, idx, max_new_tokens):
-        for _ in range(max_new_tokens):
-            idx_conditioned = idx[:, -block_size:]  # (B, T), so as to ensure
-            #that the block_size is maintained as we keep on adding the new tokens, here
-            #we take the last block_size tokens of the idx tensor
-            logits, loss = self(idx_conditioned)  #calls forward method
-            logits = logits.view(self.B, self.T, self.C)[:, -1, :]  #(B, C)
-            probs = F.softmax(logits, dim=-1)  #(B, C)
-            idx_next = torch.multinomial(probs, num_samples=1)  # (B, 1)
-            #append the sampled char to the idx
-            #print(decode([idx_next.view(-1)[0].item()]), end="")  #to see the progress, will print each char
-            idx = torch.cat([idx, idx_next], dim=1)  #(B, T+1)
+        with open("response.txt", "a") as file:
+            file.truncate(0)     #to clear contents of file
+            for _ in range(max_new_tokens):
+                idx_conditioned = idx[:, -block_size:]  # (B, T), so as to ensure
+                #that the block_size is maintained as we keep on adding the new tokens, here
+                #we take the last block_size tokens of the idx tensor
+                logits, loss = self(idx_conditioned)  #calls forward method
+                logits = logits.view(self.B, self.T, self.C)[:, -1, :]  #(B, C)
+                probs = F.softmax(logits, dim=-1)  #(B, C)
+                idx_next = torch.multinomial(probs, num_samples=1)  # (B, 1)
+                #append the sampled char to the idx
+                print(decode([idx_next.view(-1)[0].item()]), end="", flush=True)  #to see the progress, will print each char, flush
+                #the buffer each time so that its actually shown in the stdout instead of getting stored in the buffer for each 
+                #iteration of the for loop
+                file.write(decode([idx_next.view(-1)[0].item()]))
+                file.flush()     #again to flush from the buffer and to actual write to the file
+                idx = torch.cat([idx, idx_next], dim=1)  #(B, T+1)
+                time.sleep(2)
+        file.close()
         return idx
 
 
