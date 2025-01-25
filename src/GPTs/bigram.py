@@ -205,7 +205,7 @@ class BigramLanguageModel(nn.Module):
                 file.write(decode([idx_next.view(-1)[0].item()]))
                 file.flush()     #again to flush from the buffer and to actual write to the file
                 idx = torch.cat([idx, idx_next], dim=1)  #(B, T+1)
-                time.sleep(2)
+                #time.sleep(1)    #to match writing and response speeds
         file.close()
         return idx
 

@@ -61,3 +61,15 @@ hence the buffer is flushed everytime. In case of a normal prog like for i in ra
 the '\n' is encountered every time, hence for every iter of the loop, the buffer is flushed, but
 in my case I set end="" not "\n" hence all the values keep getting stored in the buffer. Same
 thing occurs for writing to a file, where file.flush() needs to be done
+
+also used system() method in C to run the python script with the prompt as the second
+argv CLA, where system() is a method in C which executed shell commands, it does it by 
+spawning new child shell process and running the command specified. However since there is a
+dynamic element involved which is that prompt itself comes in during runtime, using sprintf() 
+becomes better, which behaves the same way. Also, system() internally calls fork() to
+create a new process and then execvp() to execute the given command. Here, I used 
+snprintf() and then system() as it prevents buffer overflow, and one more thing to keep in mind is that the buffer
+which is passed as an arg to snprintf() holds the final substituted string command that is to
+be executed, and then system() is used to execute the command which is stored in a buffer
+
+NOTE TO SELF, ALSO WANT TO GIVE AN OPTION TO DOWNLOAD THE TEXT, WOULD BE A FUN ONE!

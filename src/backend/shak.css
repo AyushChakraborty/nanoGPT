@@ -114,3 +114,18 @@ body {
 #promptinput button:hover {
     background-color: rgb(200, 50, 40);
 }
+
+#response {
+    position: absolute;
+    top: 240px;
+    left: 640px;
+    border: 1px solid yellow;
+    border-radius: 10px;
+    width: 720px;
+    height: 1000px;
+    overflow-wrap: break-word;
+    overflow: hidden;
+    white-space: normal;
+    padding: 5px;
+    box-sizing: border-box;
+}

@@ -27,7 +27,7 @@ def main():
             context = torch.zeros((1, 1), dtype=torch.long, device=device)
         else:
             context = torch.tensor([bigram.encode(i) for i in input_context], dtype=torch.long, device=device)
-        if num_generation in [str(i) for i in range(5000)]:
+        if num_generation in [str(i) for i in range(20000)]:
             if input_context != '0':
                 print(input_context)
             bigram.decode(bigram.model.generate(context, int(num_generation))[0].tolist())

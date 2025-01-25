@@ -186,6 +186,18 @@ void *handle_client(void *arg) {
                 //setting the flags
                 if (shak == 1) {
                     url_encoded_filename = "shak.html";
+                    //system call to run the python script
+                    char command[256];
+                    int ran = snprintf(command, sizeof(command), "python3 shakgeneration.py 40 %s", prompt);
+                    system(command);
+                    //now as it executes, the comm stops(atleast when not manually sending anything)
+                    //and this chance could be used to update the div with chars that are being
+                    //generated live, do it here, since its the stopping area
+                    if (ran < 0) {
+                        printf("error in snprintf(), string could not be formatted\n");
+                    }else {
+                        printf("string formatted, command executed!\n");
+                    }
                 }else if (gpt == 1) {
                     url_encoded_filename = "gpt.html";
                 }
@@ -204,6 +216,8 @@ void *handle_client(void *arg) {
 
             //send http res to client 
             send(client_fd, response, response_len, 0);
+
+            //incase of a prompt coming in,
 
             free(response);
             free(file_name);
