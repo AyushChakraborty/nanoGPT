@@ -144,17 +144,6 @@ void *handle_client(void *arg) {
             //the case when a form data is present in the GET req, which is indicated
             //by the presence of the word "submit?prompt="
             if (strstr(url_encoded_filename, "submit?prompt=") != NULL) {
-                // regcomp(&referer_regex, "Referer: [^ ]*/([^ ]*\\.html)", REG_EXTENDED);
-                // int check = regexec(&referer_regex, buffer, 2, matches_referer, 0);
-                // printf("regex info: %d\n", check);
-                // if (regexec(&referer_regex, buffer, 2, matches_referer, 0) == 0) {
-                //     printf("in intended area\n");
-                //     buffer[matches_referer[1].rm_eo] = '\0';
-                //     url_encoded_filename = buffer + matches_referer[1].rm_so*sizeof(char);
-                //     printf("url encoded filename from form data: %s\n", url_encoded_filename);
-                // }regfree(&referer_regex);  
-                //this is legacy code, let is be here for vibes :)
-
                 //code to extract the prompt and save it to a text file
                 char *prompt = (char *)(url_encoded_filename + 14);   //since the text "submit?prompt="
                 //is fixed we just move the pointer to the start of the actual prompt,
@@ -168,35 +157,31 @@ void *handle_client(void *arg) {
                     }counter++;
                 }
                 printf("PROMPT: %s\n", prompt);
-                
-                //writing to text file
-                FILE *file = fopen("prompt.txt", "r+");
-                if (file == NULL) {
-                    printf("error opening file\n");
-                    exit(1);           
-                }
-                if (fputs(prompt, file) == EOF) {
-                    perror("error writing to file\n");
-                }else {
-                    printf("written prompt to file\n");
-                }
-
-                fclose(file);
 
                 //setting the flags
                 if (shak == 1) {
                     url_encoded_filename = "shak.html";
-                    //system call to run the python script
-                    char command[256];
-                    int ran = snprintf(command, sizeof(command), "python3 shakgeneration.py 40 %s", prompt);
-                    system(command);
-                    //now as it executes, the comm stops(atleast when not manually sending anything)
-                    //and this chance could be used to update the div with chars that are being
-                    //generated live, do it here, since its the stopping area
-                    if (ran < 0) {
-                        printf("error in snprintf(), string could not be formatted\n");
+                    pid_t pid = fork();  
+                    if (pid == 0) {
+                        //system call to run the python script
+                        char command[256];
+                        int ran = snprintf(command, sizeof(command), "python3 shakgeneration.py 40 %s", prompt);
+                        if (ran < 0) {
+                            fprintf(stderr, "error in snprintf(), string could not be formatted\n");
+                            exit(1);
+                        }else {
+                            printf("string formatted, command executed!\n");
+                        }
+                        int exe = system(command);
+                        if (exe == -1) {
+                            fprintf(strerror, "error executing command\n");
+                            exit(1);
+                        }printf("child process finsihed executing python script!\n");
+                    }else if (pid > 0) {
+                        printf("parent process running\n");
                     }else {
-                        printf("string formatted, command executed!\n");
+                        fprintf(stderr, "fork failed\n");
+                        exit(1);
                     }
                 }else if (gpt == 1) {
                     url_encoded_filename = "gpt.html";
