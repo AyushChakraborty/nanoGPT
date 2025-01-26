@@ -170,15 +170,46 @@ void *handle_client(void *arg) {
                             fprintf(stderr, "error in snprintf(), string could not be formatted\n");
                             exit(1);
                         }else {
-                            printf("string formatted, command executed!\n");
+                            printf("string formatted, command executing!\n");
                         }
                         int exe = system(command);
                         if (exe == -1) {
-                            fprintf(strerror, "error executing command\n");
+                            fprintf(stderr, "error executing command\n");
                             exit(1);
                         }printf("child process finsihed executing python script!\n");
                     }else if (pid > 0) {
                         printf("parent process running\n");
+                        FILE *file_res = fopen("response.txt", "r");
+                        
+                        if (!file_res) {
+                            perror("failed to open file\n");
+                        }
+                        char c;
+                        while (1) {
+                            while ((c = fgetc(file_res)) != EOF) {
+                                putchar(c);
+                                fflush(stdout);
+                            }
+                            usleep(50000);           //delay of 50ms, this is needed as without it
+                            //the parent process will loop continuously and read from the file wihtout any pause
+                            //hence this delay ensures that thre parent checks the file at reasonable intervals
+                            //allowing the child to also write the data to the file first before the parent 
+                            //attempts to read from it
+                            clearerr(file_res);      //when the parent process reaches the EOF, it needs to 
+                            //reset EOF as data is being written simultaneosuly by the child process, hence it 
+                            //clears the EOF, so that its further able to read from the file later on
+
+                            //check if the child process has exited
+                            int status;
+                            if (waitpid(pid, &status, WNOHANG) > 0) {
+                                if (WIFEXITED(status)) {
+                                    printf("child process exited with status %d\n", WEXITSTATUS(status));
+                                    break;
+                                }
+                            }//WNOHANG flag indicates that waitpd shld return immediately if the child
+                            //hasnt exited yet, and WIFEXITED() method returns true if the child terminated 
+                            //normally(via exit() or return)
+                        }fclose(file_res);
                     }else {
                         fprintf(stderr, "fork failed\n");
                         exit(1);
