@@ -37,15 +37,19 @@
             <li>If you want auto-generation, enter <strong>0</strong>.</li>
         </ul>
     </div>
+    <div id="copy">
+        <button id="cbut">copy it!</button>
+    </div>
     <div id="response">
         <!-- real time content here -->
-        <div id="copy">
-            <button id="cbut">copy it!</button>
-        </div>
     </div>
     <script>
-        //to fetch the latest content from the response file
+        //to fetch the latest content from the response file, also will use state comparison
+        //to stop the fetch if the content of the response.txt file has not changed for 
+        //some time
         let fetchInterval;
+        let lastContent = "";           //to store the last content of the file
+        var unchangedCount = 0;         //num of times content remained unchanged
         async function fetchResponse() {
             try {
                 const response = await fetch('response.txt', {cache: "no-store"}); 
@@ -54,16 +58,18 @@
                     throw new Error(`HTTP error, status: ${response.status}`);
                 }
                 const text = await response.text();
-
-                // if (text.trim() === "") {
-                //     clearInterval(fetchInterval);
-                //     console.log("empty file");
-                // }
-                document.getElementById("response").innerHTML = `
-                <div id="copy">
-                    <button>copy it!</button>
-                </div>
-                <pre>${text}</pre>`;
+                if (text === lastContent) {
+                    unchangedCount++;
+                }else {
+                    unchangedCount = 0;
+                }
+                if (unchangedCount > 70) {
+                    clearInterval(fetchInterval);
+                    unchangedCount = 0;
+                    console.log("no changes in file, stopped fetch");
+                }
+                document.getElementById("response").innerText = text;
+                lastContent = text;
             }catch (error){
                 console.error("error fetching response:", error);
             }
@@ -75,17 +81,21 @@
 
         //now to copy the text in the response div
         const cbutton = document.getElementById('cbut');
-
         cbutton.addEventListener('click', () => {
-            navigator.clipboard.writeText(response.innerText)
+            const texttoCopy = document.querySelector("#response").innerText;
+            navigator.clipboard.writeText(texttoCopy)
             .then(() => {
                 cbutton.innerText = 'done!';
-            })
+                console.log("copied");
+
+                setTimeout(() => {
+                    cbutton.innerText = 'copy it!';
+                }, 2000);
+            })  //wait for 2s then go back to showing copy it text
             .catch((err) => {
                 console.log("could not copy");
             });
         });
-        cbutton.innerHTML = `<button id="cbut">copy it!</button>`
     </script>
 </body>
 </html>

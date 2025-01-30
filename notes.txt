@@ -81,5 +81,6 @@ anyways, i just fetched the contents from the file once every 100ms using fetch(
 the div element where the text was to be shown. I also decided to make the div element a rectangle
 where the chars would not overflow over the div, but instead flow down in the div itself
 
-
-NOTE TO SELF, ALSO WANT TO GIVE AN OPTION TO COPY THE TEXT, WOULD BE A FUN ONE!
+Another thing I impemented was that i stopped the polling(fetch) after a certain period of time
+of unchanged contents in the response.txt file, this is to prevent repeated fetching even 
+when not needed, and again all this was done in js itself

@@ -181,26 +181,8 @@ void *handle_client(void *arg) {
                         }printf("child process finsihed executing python script!\n");
                     }else if (pid > 0) {
                         printf("parent process running\n");
-                        FILE *file_res = fopen("response.txt", "r");
-                        
-                        if (!file_res) {
-                            perror("failed to open file\n");
-                        }
-                        char c;
                         while (1) {
-                            while ((c = fgetc(file_res)) != EOF) {
-                                putchar(c);
-                                fflush(stdout);
-                            }
-                            usleep(50000);           //delay of 50ms, this is needed as without it
-                            //the parent process will loop continuously and read from the file wihtout any pause
-                            //hence this delay ensures that thre parent checks the file at reasonable intervals
-                            //allowing the child to also write the data to the file first before the parent 
-                            //attempts to read from it
-                            clearerr(file_res);      //when the parent process reaches the EOF, it needs to 
-                            //reset EOF as data is being written simultaneosuly by the child process, hence it 
-                            //clears the EOF, so that its further able to read from the file later on
-
+                            usleep(50000);           //delay of 50ms
                             //check if the child process has exited
                             int status;
                             if (waitpid(pid, &status, WNOHANG) > 0) {
@@ -212,21 +194,20 @@ void *handle_client(void *arg) {
                             //hasnt exited yet, and WIFEXITED() method returns true if the child terminated 
                             //normally(via exit() or return)
                         }
-                        fclose(file_res);
-
-                        // FILE *file_res_w = fopen("response.txt", "w");
-                        // //this is to ensure that the file is clean after its generation
-                        // //and by this time the div ele shld already have the contents 
-                        // //and the updates of fetch will stop as the file is empty(modified
-                        // //the conditions that way)
-                        // if (!file_res_w) {
-                        //     perror("failed to open file\n");
-                        // }
-                        // fclose(file_res_w);
-                    }else {
+                    }
+                    else {
                         fprintf(stderr, "fork failed\n");
                         exit(1);
                     }
+                    // FILE *file_res_w = fopen("response.txt", "w");
+                    // //this is to ensure that the file is clean after its generation
+                    // //and by this time the div ele shld already have the contents 
+                    // //and the updates of fetch will stop as the file is empty(modified
+                    // //the conditions that way)
+                    // if (!file_res_w) {
+                    //     perror("failed to open file\n");
+                    // }
+                    // fclose(file_res_w);
                 }else if (gpt == 1) {
                     url_encoded_filename = "gpt.html";
                 }

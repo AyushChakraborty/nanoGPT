@@ -189,7 +189,7 @@ class BigramLanguageModel(nn.Module):
     
     def generate(self, idx, max_new_tokens):
         with open("response.txt", "a") as file:
-            file.truncate(0)     #to fill the response.txt with something initially, as 
+            file.truncate(0)
             #the condition in the js script for updates needs it
             for _ in range(max_new_tokens + 300):   #300 is the overhead
                 idx_conditioned = idx[:, -block_size:]  # (B, T), so as to ensure

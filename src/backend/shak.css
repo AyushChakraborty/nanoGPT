@@ -132,14 +132,14 @@ body {
 }
 
 #copy {
-    position: relative;
+    position: absolute;
     z-index: 1;
 }
 
-#copy button {
-    position: relative;
-    top:20px;
-    left: 600px;
+#cbut {
+    position:absolute;
+    top:-770px;
+    left: 1260px;
     background-color: #333333;
     color: red;
     border-radius: 10px;
