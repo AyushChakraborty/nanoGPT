@@ -72,4 +72,14 @@ snprintf() and then system() as it prevents buffer overflow, and one more thing 
 which is passed as an arg to snprintf() holds the final substituted string command that is to
 be executed, and then system() is used to execute the command which is stored in a buffer
 
-NOTE TO SELF, ALSO WANT TO GIVE AN OPTION TO DOWNLOAD THE TEXT, WOULD BE A FUN ONE!
+
+finally, the crown jewel of this project, the dynamic update of the text shown in the client
+side. I initially tried to do it using just the server backend that I made, using diff endpoints
+trying to send event-stream type data for the chars to the client, but it honestly got too bloated
+so i just went plain js, since the text was being stored in real time in the response text file
+anyways, i just fetched the contents from the file once every 100ms using fetch() and updated
+the div element where the text was to be shown. I also decided to make the div element a rectangle
+where the chars would not overflow over the div, but instead flow down in the div itself
+
+
+NOTE TO SELF, ALSO WANT TO GIVE AN OPTION TO COPY THE TEXT, WOULD BE A FUN ONE!

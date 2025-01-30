@@ -55,8 +55,8 @@
                 console.error("error fetching response:", error);
             }
         }
-        //fetch updates every 100ms, for smoothness
-        setInterval(fetchResponse, 100);
+        //fetch updates every 50ms, for smoothness
+        setInterval(fetchResponse, 50);
         //initial fetch
         fetchResponse();
     </script>

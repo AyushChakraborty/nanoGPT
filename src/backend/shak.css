@@ -1,6 +1,6 @@
 @font-face {
     font-family: shak;
-    src: url('shakfont.ttf');
+    src: url('Wasted-Vindey.ttf');
 }
 
 body {
@@ -14,7 +14,7 @@ body {
 #title {
     position: relative;
     font-size: 2rem;
-    font-weight: 700;
+    font-weight: bolder;
     color: rgb(149, 16, 8);
     margin-bottom: 1rem;
     left: 4.5%;
@@ -28,7 +28,7 @@ body {
 
 #caption {
     position: relative;
-    left: 3%;
+    left: 1%;
     font-size: 1.3rem;
     color: rgb(149, 16, 8);
 }

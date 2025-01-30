@@ -190,7 +190,7 @@ class BigramLanguageModel(nn.Module):
     def generate(self, idx, max_new_tokens):
         with open("response.txt", "a") as file:
             file.truncate(0)     #to clear contents of file
-            for _ in range(max_new_tokens):
+            for _ in range(max_new_tokens + 300):
                 idx_conditioned = idx[:, -block_size:]  # (B, T), so as to ensure
                 #that the block_size is maintained as we keep on adding the new tokens, here
                 #we take the last block_size tokens of the idx tensor
@@ -205,7 +205,13 @@ class BigramLanguageModel(nn.Module):
                 file.write(decode([idx_next.view(-1)[0].item()]))
                 file.flush()     #again to flush from the buffer and to actual write to the file
                 idx = torch.cat([idx, idx_next], dim=1)  #(B, T+1)
-                #time.sleep(1)    #to match writing and response speeds
+                # print(_)
+                # print(idx)
+
+                if (_ > max_new_tokens and (idx_next.view(-1)[0].item() == 0 and idx[0][-2].tolist() == 0)):
+                    break
+                #print(True if idx_next.view(-1)[0].item() == 0 and idx[0][-2].tolist() == 0 else False)
+        # file.truncate(0)
         file.close()
         return idx
 
