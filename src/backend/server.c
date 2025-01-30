@@ -165,7 +165,7 @@ void *handle_client(void *arg) {
                     if (pid == 0) {
                         //system call to run the python script
                         char command[256];
-                        int ran = snprintf(command, sizeof(command), "python3 shakgeneration.py 1000 %s", prompt);
+                        int ran = snprintf(command, sizeof(command), "python3 shakgeneration.py 10 %s", prompt);
                         system(command);
                         exit(0);
                         if (ran < 0) {
@@ -211,7 +211,18 @@ void *handle_client(void *arg) {
                             }//WNOHANG flag indicates that waitpd shld return immediately if the child
                             //hasnt exited yet, and WIFEXITED() method returns true if the child terminated 
                             //normally(via exit() or return)
-                        }fclose(file_res);
+                        }
+                        fclose(file_res);
+
+                        // FILE *file_res_w = fopen("response.txt", "w");
+                        // //this is to ensure that the file is clean after its generation
+                        // //and by this time the div ele shld already have the contents 
+                        // //and the updates of fetch will stop as the file is empty(modified
+                        // //the conditions that way)
+                        // if (!file_res_w) {
+                        //     perror("failed to open file\n");
+                        // }
+                        // fclose(file_res_w);
                     }else {
                         fprintf(stderr, "fork failed\n");
                         exit(1);
