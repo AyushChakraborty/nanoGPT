@@ -1,4 +1,4 @@
-# This is an implementation of a small version of GPT1(with a little under 10M paramters) and GPT2(124M params) from Andrej Karpathy's zero to hero series
+# This is an implementation of a small version of GPT1(with a little under 10M paramters) and GPT2(124M params) from Andrej Karpathy's zero to hero series, along with a web interface to interact with the model
 
 > ## The transformer model architecture
 > ![nanoGPT](./images/image-1.png)
@@ -35,7 +35,23 @@
 ![alt text](./images/image-3.png)
 ### pretty good for a "nano" GPT!!
 
-### This will be scaled up to a certain degree, so keep an eye!
+### This was the first iteration, now what I added next was implement a server for this in C, and use js and html to handle the frontend
 
-### TODO: make a server script that can show the generated shakespear content to the user, given they give
-### in the prompt, also have to beautify the README.md page significantly, mention the training process(quite a  story) and add more images(why not)
+### once you clone the repo, go to the backend folder within src using 
+```sh
+cd src/backend
+```
+### and run the following command
+```sh
+./server
+```
+
+### this runs the server executble and starts the server, then go to
+```localhost:8080\main.html```
+### then go to nanoGPT or pearGPT to play with it!(the nanoGPT is based on the preloaded weights, and pearGPT is the one I trained on the shakespear dataset)
+
+### within the GPTs, you can copy the text, and it also gives you simultaneous updates on the text generated, just like the actual chatGPT interface.
+
+![demo](images/demo.gif)
+
+### the next plan is to make a homepage, with nanoGPT and pearGPT as main features, as well as links to resources from whwre I learned everything, like a central hub, and also write a medium article about transformers :)
