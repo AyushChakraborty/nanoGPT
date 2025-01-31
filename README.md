@@ -54,4 +54,6 @@ cd src/backend
 
 ![demo](images/demo.gif)
 
+### all the important things I learnt along the way about actually making the web interface is mentioned in notes.txt
+
 ### the next plan is to make a homepage, with nanoGPT and pearGPT as main features, as well as links to resources from whwre I learned everything, like a central hub, and also write a medium article about transformers :)
