@@ -199,15 +199,6 @@ void *handle_client(void *arg) {
                         fprintf(stderr, "fork failed\n");
                         exit(1);
                     }
-                    // FILE *file_res_w = fopen("response.txt", "w");
-                    // //this is to ensure that the file is clean after its generation
-                    // //and by this time the div ele shld already have the contents 
-                    // //and the updates of fetch will stop as the file is empty(modified
-                    // //the conditions that way)
-                    // if (!file_res_w) {
-                    //     perror("failed to open file\n");
-                    // }
-                    // fclose(file_res_w);
                 }else if (gpt == 1) {
                     url_encoded_filename = "gpt.html";
                 }

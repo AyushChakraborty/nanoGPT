@@ -83,4 +83,7 @@ where the chars would not overflow over the div, but instead flow down in the di
 
 Another thing I impemented was that i stopped the polling(fetch) after a certain period of time
 of unchanged contents in the response.txt file, this is to prevent repeated fetching even 
-when not needed, and again all this was done in js itself
+when not needed, and again all this was done in js itself, also stopping the fetching entierly
+when no updates happen for a while actually also stops the fetching for future changes too, hence
+causing a bug where the dynamic update of the content does not happen, for this we can slow
+down the fetch rate by a lot when no changes occur

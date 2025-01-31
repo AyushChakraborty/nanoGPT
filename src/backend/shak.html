@@ -21,7 +21,7 @@
             <p>Enter your prompt here:</p>
         </div>
         <div id="promptinput">
-            <form action="/submit" method="GET" target="_self" id="formele">  
+            <form action="/submit" method="GET" target="_self" id="formele" onsubmit="resetFetch()">  
                 <input type="text" id="prompt" name="prompt" placeholder="Type your prompt" />
                 <div id="bin">
                     <button type="submit">Enter</button>
@@ -43,6 +43,10 @@
     <div id="response">
         <!-- real time content here -->
     </div>
+    <div id="info">
+        <p>*** trained on shakespear text dataset: <a href="https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt">link</a></p>
+        <p>model architecture is similar to GPT-1</p>
+    </div>
     <script>
         //to fetch the latest content from the response file, also will use state comparison
         //to stop the fetch if the content of the response.txt file has not changed for 
@@ -50,6 +54,7 @@
         let fetchInterval;
         let lastContent = "";           //to store the last content of the file
         var unchangedCount = 0;         //num of times content remained unchanged
+        let currentInterval = 50;        //start off with freq updates
         async function fetchResponse() {
             try {
                 const response = await fetch('response.txt', {cache: "no-store"}); 
@@ -62,22 +67,41 @@
                     unchangedCount++;
                 }else {
                     unchangedCount = 0;
-                }
-                if (unchangedCount > 70) {
-                    clearInterval(fetchInterval);
-                    unchangedCount = 0;
-                    console.log("no changes in file, stopped fetch");
+                    if (currentInterval !== 50) {
+                        clearInterval(fetchInterval);
+                        currentInterval = 50;
+                        fetchInterval = setInterval(fetchInterval, currentInterval);
+                    }
                 }
                 document.getElementById("response").innerText = text;
                 lastContent = text;
+                if (unchangedCount > 100 && currentInterval === 50) {
+                    clearInterval(fetchInterval);
+                    currentInterval = 1000;   //slow down to 1s updates
+                    unchangedCount = 0;
+                    fetchInterval = setInterval(fetchResponse, currentInterval);
+                    console.log("no changes in file, fetching at slower rate");
+                }
             }catch (error){
                 console.error("error fetching response:", error);
             }
+        }
+
+        function resetFetch() {
+            clearInterval(fetchInterval);
+            currentInterval = 50;
+            fetchInterval = setInterval(fetchResponse, currentInterval);
         }
         //fetch updates every 50ms, for smoothness
         fetchInterval = setInterval(fetchResponse, 50);
         //initial fetch
         fetchResponse();
+
+        //also how the intervals works are, 50ms means 20 fetches per sec
+        //and 1000ms means 1 time a second, which is slower, and this is essentially
+        //what is done when changes do not happen for a time, it slows down the fetch
+        //but doesnt stop it entierly as that would mean the dynamic update of tokens later
+        //would not be possible
 
         //now to copy the text in the response div
         const cbutton = document.getElementById('cbut');

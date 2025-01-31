@@ -149,3 +149,8 @@ body {
     text-align: center;
     z-index: 900;
 }
+
+#info {
+    position: absolute;
+    top: 1500px;
+}

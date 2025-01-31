@@ -211,8 +211,6 @@ class BigramLanguageModel(nn.Module):
 
                 if (_ > max_new_tokens and (idx_next.view(-1)[0].item() == 0 and idx[0][-2].tolist() == 0)):
                     break
-                #print(True if idx_next.view(-1)[0].item() == 0 and idx[0][-2].tolist() == 0 else False)
-        # file.truncate(0)
         file.close()
         return idx
 
