@@ -154,3 +154,25 @@ body {
     position: absolute;
     top: 1500px;
 }
+
+#home {
+    position: absolute;
+    top: 10px;
+    left: 1350px;
+    font-size: large;
+    color: red;
+    text-decoration: none;
+}
+
+#home:hover {
+    color: yellow;
+}
+
+#dataset {
+    color: salmon;
+    text-decoration: none;
+}
+
+#dataset:hover {
+    color: yellow;
+}

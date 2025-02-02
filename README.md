@@ -52,6 +52,8 @@ cd src/backend
 
 ### within the GPTs, you can copy the text, and it also gives you simultaneous updates on the text generated, just like the actual chatGPT interface.
 
+### the gif takes a little long to show up so pls wait:)
+
 ![demo](images/demo.gif)
 
 ### all the important things I learnt along the way about actually making the web interface is mentioned in notes.txt
