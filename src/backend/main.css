@@ -1,35 +1,35 @@
 body {
     font-family: 'Orbitron', sans-serif;
-    background-color: #02223b;
+    background-color: #010e18;
     color: burlywood;
     margin: 0;
     padding: 0;
     display: flex;
     justify-content: center;
-    align-items: center;
-    height: 100vh;
+    align-items: flex-start; /* Align everything at the top */
+    height: 100vh; /* Use the full height but align the content at the top */
 }
 
 .container {
     text-align: center;
     display: flex;
     flex-direction: column;
-    justify-content: center;
     align-items: center;
     width: 80%;
     max-width: 800px;
+    padding-top: 50px; /* Adds spacing above the heading */
 }
 
 h1 {
     font-size: 3rem;
     text-transform: uppercase;
     letter-spacing: 3px;
-    margin-bottom: 20px;
+    margin-bottom: 20px;  /* Adds spacing below the heading */
 }
 
 .links {
     display: flex;
-    justify-content: space-between;
+    justify-content: space-evenly;  /* Evenly space the links */
     width: 100%;
     max-width: 600px;
     margin-bottom: 50px;
@@ -39,10 +39,11 @@ h1 {
     color: burlywood;
     text-decoration: none;
     font-size: 1.2rem;
-    padding: 10px 20px;
+    padding: 30px 30px;
     border: 2px solid burlywood;
     border-radius: 8px;
     transition: all 0.3s ease-in-out;
+    margin: 0 10px;  /* Adds space between the link boxes */
 }
 
 .links a:hover {
@@ -59,6 +60,7 @@ p {
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
+    border: 2px solid burlywood;
 }
 
 p a {

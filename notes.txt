@@ -87,3 +87,10 @@ when not needed, and again all this was done in js itself, also stopping the fet
 when no updates happen for a while actually also stops the fetching for future changes too, hence
 causing a bug where the dynamic update of the content does not happen, for this we can slow
 down the fetch rate by a lot when no changes occur
+
+Another thing about css is the transform property, say whats given is
+    transform: translate(-50%) 
+for a <p> ele, now if left:50% is also mentioned, then its left side will be at the centre but
+the entirety of the p ele will bulge out to the right, hence we need to also shift the p ele
+to the left by 50% of its width to essentially centre it, and this is what this means. The same
+can be done for both hori and ver centring using transform: translate(-50%, -50%)
