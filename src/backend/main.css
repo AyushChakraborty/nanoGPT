@@ -60,7 +60,6 @@ p {
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
-    border: 2px solid burlywood;
 }
 
 p a {

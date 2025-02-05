@@ -94,3 +94,11 @@ for a <p> ele, now if left:50% is also mentioned, then its left side will be at 
 the entirety of the p ele will bulge out to the right, hence we need to also shift the p ele
 to the left by 50% of its width to essentially centre it, and this is what this means. The same
 can be done for both hori and ver centring using transform: translate(-50%, -50%)
+
+
+now the aim is to deploy it, and for this I use render.com, here i can connect the repo
+where this project is present and it can be deployed, altough it does sleep when its inactive
+and is not meant to be production grade. For this I used getenv("PORT") so that it sets the
+env port to something dynamic when it runs the server executable, also render will 
+automatically route traffic from the url https://name.com (assume) to the assigned port
+so that users dont need to type the actual port every single time

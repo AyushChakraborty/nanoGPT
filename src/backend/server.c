@@ -238,11 +238,13 @@ int main() {
         perror("socket failed");
         exit(EXIT_FAILURE); 
     }
-
+    char *port_str = getenv("PORT");   //gets the assigned port, will be deploying it 
+    //on render, and it assignes it dynamically, hence this line is needed
+    int port = (port_str) ? atoi(port_str) : PORT;
     //configuring the socket
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;  
-    server_addr.sin_port = htons(PORT);       
+    server_addr.sin_port = htons(port);       
 
     int opt = 1;  
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
