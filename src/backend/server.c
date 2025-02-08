@@ -201,6 +201,40 @@ void *handle_client(void *arg) {
                     }
                 }else if (gpt == 1) {
                     url_encoded_filename = "gpt.html";
+                    pid_t pid1 = fork();  
+                    if (pid1 == 0) {
+                        char command[256];
+                        int ran = snprintf(command, sizeof(command), "python3 shakgeneration.py 1100 %s", prompt);
+                        system(command);
+                        exit(0);
+                        if (ran < 0) {
+                            fprintf(stderr, "error in snprintf(), string could not be formatted\n");
+                            exit(1);
+                        }else {
+                            printf("string formatted, command executing!\n");
+                        }
+                        int exe = system(command);
+                        if (exe == -1) {
+                            fprintf(stderr, "error executing command\n");
+                            exit(1);
+                        }printf("child process finsihed executing python script!\n");
+                    }else if (pid1 > 0) {
+                        printf("parent process running\n");
+                        while (1) {
+                            usleep(50000);           
+                            int status;
+                            if (waitpid(pid1, &status, WNOHANG) > 0) {
+                                if (WIFEXITED(status)) {
+                                    printf("child process exited with status %d\n", WEXITSTATUS(status));
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    else {
+                        fprintf(stderr, "fork failed\n");
+                        exit(1);
+                    }
                 }
             }
             char *file_name = url_decode(url_encoded_filename);     

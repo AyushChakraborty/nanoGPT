@@ -28,4 +28,35 @@
     font-size: large;
 }
 
+#response {
+    position: absolute;
+    top: 45%;
+    left: 28%;
+    border: 1px solid yellow;
+    border-radius: 30px;
+    border-image: repeating-linear-gradient(
+        90deg,
+        yellow 0px, yellow 10px,
+        black 10px, black 20px
+    ) 20;
+    width: 720px;
+    min-height: 100px;
+    overflow-wrap: break-word;
+    overflow: hidden;
+    white-space: normal;
+    padding: 5px;
+    box-sizing: border-box;
+    font-size: 1.4rem;
+}
 
+#home {
+    position: absolute;
+    top: 1%;
+    left: 96%;
+    font-size: large;
+    text-decoration: none;
+}
+
+#home:hover {
+    color: #61afef;
+}
