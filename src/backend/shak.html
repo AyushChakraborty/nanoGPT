@@ -93,10 +93,11 @@
             currentInterval = 50;
             fetchInterval = setInterval(fetchResponse, currentInterval);
         }
-        //fetch updates every 50ms, for smoothness
-        fetchInterval = setInterval(fetchResponse, 50);
-        //initial fetch
-        fetchResponse();
+        setTimeout(() => {
+            fetchResponse();    //first fetch
+            fetchInterval = setInterval(fetchResponse, 20);  //fetch updates every 20ms after first fetch, for smoothness
+        }, 100);  //first fetch happens by a delay to ensure that the server actually writes to the 
+                  //text file first
 
         //also how the intervals works are, 50ms means 20 fetches per sec
         //and 1000ms means 1 time a second, which is slower, and this is essentially
