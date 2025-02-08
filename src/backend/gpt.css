@@ -1,3 +1,31 @@
 * {
     background-color: black;
+    font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+    font-weight: lighter;
+    color: white;
 }
+
+#heading {
+    position: relative;
+    left: 45%;
+    color: #d19a66;
+}
+
+#descb {
+    position: relative;
+    left: 40%;
+}
+
+#prompt {
+    position: absolute;
+    left: 40%;
+    top: 25%;
+    width: 600px;
+    font-size: large;
+}
+
+#prompttext {
+    font-size: large;
+}
+
+

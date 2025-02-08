@@ -165,7 +165,7 @@ void *handle_client(void *arg) {
                     if (pid == 0) {
                         //system call to run the python script
                         char command[256];
-                        int ran = snprintf(command, sizeof(command), "python3 shakgeneration.py 100 %s", prompt);
+                        int ran = snprintf(command, sizeof(command), "python3 shakgeneration.py 1100 %s", prompt);
                         system(command);
                         exit(0);
                         if (ran < 0) {
