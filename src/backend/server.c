@@ -204,7 +204,7 @@ void *handle_client(void *arg) {
                     pid_t pid1 = fork();  
                     if (pid1 == 0) {
                         char command[256];
-                        int ran = snprintf(command, sizeof(command), "python3 shakgeneration.py 1100 %s", prompt);
+                        int ran = snprintf(command, sizeof(command), "python3 gptgeneration.py 1100 %s", prompt);
                         system(command);
                         exit(0);
                         if (ran < 0) {

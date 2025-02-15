@@ -72,7 +72,7 @@ class CausalSelfAttention(nn.Module):
         #can vary from 1 to T tokens
 
         y = att @ v  # (B, n_head, T, T) @ (B, n_head, T, head_size) -> (B, n_head, T, head_size)
-                     #here we get the weighted value vector for each token for each batch and for each head
+                    #here we get the weighted value vector for each token for each batch and for each head
 
         #y = F.scaled_dot_product_attention(q, k, v, is_causal=True)  #flash attention part, runs proprly only on cuda with triton installed, so use accordingly
 
@@ -242,7 +242,7 @@ class GPT(nn.Module):
         transposed = ['attn.c_attn.weight', 'attn.c_proj.weight', 'mlp.c_fc.weight', 'mlp.c_proj.weight']
         # basically the openai checkpoints use a "Conv1D" module, but we only want to use a vanilla linear
         # this means that we have to transpose these weights when we import them
-        assert len(sd_keys_hf) == len(sd_keys), f"mismatched keys: {len(sd_keys_hf)} != {len(sd_keys)}"
+        #assert len(sd_keys_hf) == len(sd_keys), f"mismatched keys: {len(sd_keys_hf)} != {len(sd_keys)}"
         for k in sd_keys_hf:
             if any(k.endswith(w) for w in transposed):
                 #special treatment for the Conv1D weights we need to transpose
@@ -318,7 +318,6 @@ def load_checkpoints(filename, model, optimiser):
     return step
 
 
-
 #-------------------------
 import time
 if torch.mps.is_available():
@@ -326,160 +325,161 @@ if torch.mps.is_available():
 elif torch.cuda.is_available():
     torch.cuda.empty_cache()
 
+
 #set up DDP(distributed data parallel) for multi-gpu training if present in CUDA specifically
-#torchrun command here sets up the env vars like RANK, LOCAL_RANK, WORLD_SIZE
-ddp = int(os.environ.get('RANK', -1)) != -1        #is this a ddp run or not
-if ddp:
-    #use of DDP depends on CUDA, so we set the device appropriately according to rank
-    assert torch.cuda.is_available(), "torch.distributed only works with CUDA"
-    init_process_group(backend='nccl') 
-    ddp_rank = int(os.environ['RANK'])               #numbering of those processes/gpus
-    ddp_world_size = int(os.environ['WORLD_SIZE'])   #total number of processes running
-    ddp_local_rank = int(os.environ['LOCAL_RANK'])   
-    device = f"cuda:{ddp_local_rank}"                
-    torch.cuda.set_device(device)                    #setting the device to the local rank
-    master_process = ddp_rank == 0                   #this process does logging
-else:
-    #vanilla, non-DDP run
-    ddp_rank = 0
-    ddp_world_size = 1
-    ddp_local_rank = 0
-    master_process = True
-    device = "cpu"
-    if torch.cuda.is_available():
-        device = "cuda:0"
-    elif hasattr(torch, 'mps') and torch.mps.is_available():
-        device = "mps"
-    print(f"using device: {device}")
-
-
-torch.manual_seed(1337)
-if torch.cuda.is_available():
-    torch.cuda.manual_seed(1337)
-elif torch.mps.is_available():
-    torch.mps.manual_seed(1337)
-
-
-#simulated batch size init 
-total_batch_size = 524288                          #2**19  ~ 0.5M tokens, faithful to the GPT2 model
-B = 8
-T = 512                                            #if DDP is available and used, then B*T will happen in each of the ddp_world_size processes
-assert total_batch_size % (B*T*ddp_world_size) == 0, "batch size must divide total batch size across all processes(if available)"
-grad_accum_steps = total_batch_size // (B*T*ddp_world_size)         #will give the number of forward backwards to be done before updating the weights
-if master_process:
-    print(f"total desired batch size: {total_batch_size}, grad_accum_steps: {grad_accum_steps}") 
-
-
-#get the data batch
-train_loader = DataLoader(B=B, T=T, process_rank=ddp_rank, num_processes=ddp_world_size)   #shld be 16, 1024
-
-torch.set_float32_matmul_precision("high")         #setting to tf32 instead of fp32, for faster computation
-
-#model = GPT.from_pretrained('gpt2')               #loading the pretrained model, if needed
-model = GPT(GPTConfig(vocab_size=50304))           #changing the vocab size to be power of 2, making it a nice number, hence making training faster, keep in mind that the other tokens dont end up getting used 
-model.to(device)                                   #this sets up the model 
-model = torch.compile(model)                       #uses JIT compiling to speed up the training
-if ddp:
-    model = DDP(model, device_ids=[ddp_local_rank])#setting up the model for DDP, if DDP is used
-
-raw_model = model.module if ddp else model        
-
-#implementing cosine decay of learning rate with linear warmup, this is a learning rate scheduler
-max_lr = 12e-4
-min_lr = max_lr * 0.01
-warmup_steps = 40
-max_steps = 150
-def get_lr(step):
-    #linear warmup
-    if step < warmup_steps:
-        return max_lr * (step+1) / warmup_steps
-    if step > max_steps:
-        return min_lr
-    #cosine decay
-    decay_ratio = (step - warmup_steps) / (max_steps - warmup_steps)
-    assert 0 <= decay_ratio <= 1
-    coeff = 0.5 * (1 + math.cos(math.pi * decay_ratio))
-    return min_lr + coeff * (max_lr - min_lr)
-
-
-#optimising/training
-optimiser = raw_model.configure_optimisers(weight_decay = 0.1, learning_rate = 6e-4, device=device)
-resumed_step = 0
-save_interval = 4
-train_loss_log = []
-val_loss_log = []
-
-#check if checkpoint exists
-checkpoint_file = "./saved_models/nanogpt2.pth"
-if os.path.exists(checkpoint_file):
-    try:
-        resumed_step = load_checkpoints(checkpoint_file, raw_model, optimiser)
-    except Exception as e:
-        print(f"error loading checkpoint: {e}")
-    print(f"resuming from step {resumed_step}")
-
-for step in range(resumed_step, max_steps):
-    t0 = time.time()
-    #---------------
-    optimiser.zero_grad()
-    #------- inner loop for simulated batch size of 0.5M tokens
-    loss_accum = 0                            #if DDP is used, then the loss is summed across all the processes
-    for micro_step in range(grad_accum_steps):
-        x, y = train_loader.next_batch()
-        x, y = x.to(device), y.to(device)                                    #putting the data on the device
-        if torch.cuda.is_available():
-            with torch.autocast(device_type="cuda", dtype=torch.bfloat16):   #only now converts certain layers like linear to bf16
-                logits, loss = model(x, y)                                   #this feature of mixed precision training for now is only available on cuda devices 
-        else:
-            logits, loss = model(x, y)
-        loss /= grad_accum_steps           #to account for the fact that in each inidvidual mini batch, the loss is found and then added over
-        #all the other mini batches, but if we were to pass the 0.5M tokens as a singular batch, the loss would have a reduction of mean
-        #which means that it is divided by the number of tokens in each batch, now that is already taken care of in the individual batches, but
-        #amongst the grad_accum_steps number of batches, it is not, hence we divide by grad_accum_steps, to recover the factor back. So 
-        #it all has to do with the fact that losses generally have a reduction of mean and that has to be accounted for
-        loss_accum += loss.detach()
-        if ddp:
-            model.require_backward_grad_sync = (micro_step == grad_accum_steps - 1)  #syncing the gradients across the processes
-        loss.backward()
+    #torchrun command here sets up the env vars like RANK, LOCAL_RANK, WORLD_SIZE
+    ddp = int(os.environ.get('RANK', -1)) != -1        #is this a ddp run or not
     if ddp:
-        all_reduce(loss_accum, op=ReduceOp.AVG)  #summing the loss across all the processes
-    #-------
-    norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)                   #clipping the gradients to 1.0
-    lr = get_lr(step)
-    for param_group in optimiser.param_groups:
-        param_group['lr'] = lr
-    optimiser.step()
-    #---------------
+        #use of DDP depends on CUDA, so we set the device appropriately according to rank
+        assert torch.cuda.is_available(), "torch.distributed only works with CUDA"
+        init_process_group(backend='nccl') 
+        ddp_rank = int(os.environ['RANK'])               #numbering of those processes/gpus
+        ddp_world_size = int(os.environ['WORLD_SIZE'])   #total number of processes running
+        ddp_local_rank = int(os.environ['LOCAL_RANK'])   
+        device = f"cuda:{ddp_local_rank}"                
+        torch.cuda.set_device(device)                    #setting the device to the local rank
+        master_process = ddp_rank == 0                   #this process does logging
+    else:
+        #vanilla, non-DDP run
+        ddp_rank = 0
+        ddp_world_size = 1
+        ddp_local_rank = 0
+        master_process = True
+        device = "cpu"
+        if torch.cuda.is_available():
+            device = "cuda:0"
+        elif hasattr(torch, 'mps') and torch.mps.is_available():
+            device = "mps"
+        print(f"using device: {device}")
+
+def main():
+    torch.manual_seed(1337)
     if torch.cuda.is_available():
-      torch.cuda.synchronize()                      #waiting for the GPU to finish the computation, then move to the next line which is calculating the finish time
+        torch.cuda.manual_seed(1337)
     elif torch.mps.is_available():
-      torch.mps.synchronize()    
-    t1 = time.time()
-    dt = t1 - t0                            #in s
-    tokens_processed = train_loader.B * train_loader.T * grad_accum_steps * ddp_world_size        #across the large batch 
-    tokens_per_sec = tokens_processed / dt
-    print(f'step: {step} | loss: {loss_accum.item(): .6f} | lr: {lr: .4e} | dt: {dt: .4f}s | norm: {norm: .4f} | tokens_per_sec: {tokens_per_sec: .2f}tok/sec')   #loss also lives on GPU, then .item() moves it to CPU, and converts to a float 
-    if step % save_interval == 0 and master_process:    #ensures the only the master process saves the checkpoints
-        save_checkpoints(raw_model, optimiser, step)    #saving the checkpoints after each step
-    train_loss_log.append(loss_accum.item())            #logging the training loss for each step
-        
+        torch.mps.manual_seed(1337)
 
-if ddp:
-    destroy_process_group()                 #cleaning up the process group, as the training is done
+    #simulated batch size init 
+    total_batch_size = 524288                          #2**19  ~ 0.5M tokens, faithful to the GPT2 model
+    B = 8
+    T = 512                                            #if DDP is available and used, then B*T will happen in each of the ddp_world_size processes
+    assert total_batch_size % (B*T*ddp_world_size) == 0, "batch size must divide total batch size across all processes(if available)"
+    grad_accum_steps = total_batch_size // (B*T*ddp_world_size)         #will give the number of forward backwards to be done before updating the weights
+    if master_process:
+        print(f"total desired batch size: {total_batch_size}, grad_accum_steps: {grad_accum_steps}") 
 
-import sys; sys.exit(0)
 
+    #get the data batch
+    train_loader = DataLoader(B=B, T=T, process_rank=ddp_rank, num_processes=ddp_world_size)   #shld be 16, 1024
+
+    torch.set_float32_matmul_precision("high")         #setting to tf32 instead of fp32, for faster computation
+
+    #model = GPT.from_pretrained('gpt2')               #loading the pretrained model, if needed
+    model = GPT(GPTConfig(vocab_size=50304))           #changing the vocab size to be power of 2, making it a nice number, hence making training faster, keep in mind that the other tokens dont end up getting used 
+    model.to(device)                                   #this sets up the model 
+    model = torch.compile(model)                       #uses JIT compiling to speed up the training
+    if ddp:
+        model = DDP(model, device_ids=[ddp_local_rank])#setting up the model for DDP, if DDP is used
+
+    raw_model = model.module if ddp else model        
+
+    #implementing cosine decay of learning rate with linear warmup, this is a learning rate scheduler
+    max_lr = 12e-4
+    min_lr = max_lr * 0.01
+    warmup_steps = 40
+    max_steps = 150
+    def get_lr(step):
+        #linear warmup
+        if step < warmup_steps:
+            return max_lr * (step+1) / warmup_steps
+        if step > max_steps:
+            return min_lr
+        #cosine decay
+        decay_ratio = (step - warmup_steps) / (max_steps - warmup_steps)
+        assert 0 <= decay_ratio <= 1
+        coeff = 0.5 * (1 + math.cos(math.pi * decay_ratio))
+        return min_lr + coeff * (max_lr - min_lr)
+
+
+    #optimising/training
+    optimiser = raw_model.configure_optimisers(weight_decay = 0.1, learning_rate = 6e-4, device=device)
+    resumed_step = 0
+    save_interval = 4
+    train_loss_log = []
+    val_loss_log = []
+
+    #check if checkpoint exists
+    checkpoint_file = "./saved_models/nanogpt2.pth"
+    if os.path.exists(checkpoint_file):
+        try:
+            resumed_step = load_checkpoints(checkpoint_file, raw_model, optimiser)
+        except Exception as e:
+            print(f"error loading checkpoint: {e}")
+        print(f"resuming from step {resumed_step}")
+
+        for step in range(resumed_step, max_steps):
+            t0 = time.time()
+            #---------------
+            optimiser.zero_grad()
+            #------- inner loop for simulated batch size of 0.5M tokens
+            loss_accum = 0                            #if DDP is used, then the loss is summed across all the processes
+            for micro_step in range(grad_accum_steps):
+                x, y = train_loader.next_batch()
+                x, y = x.to(device), y.to(device)                                    #putting the data on the device
+                if torch.cuda.is_available():
+                    with torch.autocast(device_type="cuda", dtype=torch.bfloat16):   #only now converts certain layers like linear to bf16
+                        logits, loss = model(x, y)                                   #this feature of mixed precision training for now is only available on cuda devices 
+                else:
+                    logits, loss = model(x, y)
+                loss /= grad_accum_steps           #to account for the fact that in each inidvidual mini batch, the loss is found and then added over
+                #all the other mini batches, but if we were to pass the 0.5M tokens as a singular batch, the loss would have a reduction of mean
+                #which means that it is divided by the number of tokens in each batch, now that is already taken care of in the individual batches, but
+                #amongst the grad_accum_steps number of batches, it is not, hence we divide by grad_accum_steps, to recover the factor back. So 
+                #it all has to do with the fact that losses generally have a reduction of mean and that has to be accounted for
+                loss_accum += loss.detach()
+                if ddp:
+                    model.require_backward_grad_sync = (micro_step == grad_accum_steps - 1)  #syncing the gradients across the processes
+                loss.backward()
+            if ddp:
+                all_reduce(loss_accum, op=ReduceOp.AVG)  #summing the loss across all the processes
+            #-------
+            norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)                   #clipping the gradients to 1.0
+            lr = get_lr(step)
+            for param_group in optimiser.param_groups:
+                param_group['lr'] = lr
+            optimiser.step()
+            #---------------
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()                      #waiting for the GPU to finish the computation, then move to the next line which is calculating the finish time
+            elif torch.mps.is_available():
+                torch.mps.synchronize()    
+            t1 = time.time()
+            dt = t1 - t0                            #in s
+            tokens_processed = train_loader.B * train_loader.T * grad_accum_steps * ddp_world_size        #across the large batch 
+            tokens_per_sec = tokens_processed / dt
+            print(f'step: {step} | loss: {loss_accum.item(): .6f} | lr: {lr: .4e} | dt: {dt: .4f}s | norm: {norm: .4f} | tokens_per_sec: {tokens_per_sec: .2f}tok/sec')   #loss also lives on GPU, then .item() moves it to CPU, and converts to a float 
+            if step % save_interval == 0 and master_process:    #ensures the only the master process saves the checkpoints
+                save_checkpoints(raw_model, optimiser, step)    #saving the checkpoints after each step
+            train_loss_log.append(loss_accum.item())            #logging the training loss for each step
+                
+
+        if ddp:
+            destroy_process_group()                 #cleaning up the process group, as the training is done
+
+
+#not within the main func, so as to generate new text from another module
 
 #tokenising the input 
+model = GPT.from_pretrained('gpt2')
+model.to(device)
 model.eval()                                                  #putting it in eval, altogether not necessary as we are not using dropout or batchnorm
-num_return_sequences = 5
-max_length = 50
+num_return_sequences = 1
+max_length = 150
 enc = tkn.get_encoding('gpt2')                                #loads the encoding of gpt2 
-tokens = enc.encode("Hello, I'm a language model,")
+tokens = enc.encode("haiku ")
 tokens = torch.tensor(tokens, dtype=torch.long)               #(12, ), as seen from the tiktokenizer app, chk it out :)
 tokens = tokens.unsqueeze(0).repeat(num_return_sequences, 1)  #(3, 12), so that we can generate 3 sequences at once
 idx = tokens.to(device)                                       #putting it on the device
-
 
 #generating !
 #here idx is (num_return_sequences, T), where T is the number of tokens in the input sequence, and num_return_sequences is number of batches
@@ -494,16 +494,9 @@ while idx.size(1) < max_length:
         topk_probs, topk_indices = torch.topk(probs, 50, dim=-1)       #(num_return_sequences, 50), the top 50 tokens and their probabilities
         ix = torch.multinomial(topk_probs, num_samples=1)              #(num_return_sequences, 1), the indices of the tokens sampled from the top 50 tokens from each one of the batches
         idxcol = torch.gather(topk_indices, -1, ix)                    #(num_return_sequences, 1), the actual token indices sampled from the top 50 tokens
+        print(enc.decode([idxcol[0, 0].item()]), end="", flush=True)   #setting num_return_sequences as 1, only then will this work
         idx = torch.cat((idx, idxcol), dim=1)                          #(num_return_sequences, T+1), the new token indices for each of the batches
         
 
-# print the generated text
-for s in range(num_return_sequences):
-    tokens = idx[s, :max_length].tolist()
-    decoded = enc.decode(tokens)
-    print(":: ", decoded)
-
-#step 268, training loss, 2.14 with norm 1.94, training stopped there, 
-#can build diff modes of the site, one for shakespear with gpt1 and 2, 
-#other for normal gpt mode with the preloaded weights of gpt2,
-#a normal conversational gpt basically
+if __name__ == "__main__":
+    main()
