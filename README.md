@@ -1,4 +1,4 @@
-# This is an implementation of a small version of GPT1(with a little under 10M paramters) and GPT2(124M params) from Andrej Karpathy's zero to hero series, along with a web interface to interact with the model
+# This is an implementation of a small version of GPT1(with a little under 10M paramters) and GPT2(124M params) along with a web interface to interact with the model
 
 > ## The transformer model architecture
 > ![nanoGPT](./images/image-1.png)
@@ -17,7 +17,7 @@
 ### Chris Olah's blogs are also a must read to understand about this and related topics
 > ### https://colah.github.io/
 
-### And last but not the least, the zero to hero series by none other than Mr Andrej Karpathy himself
+### And last but not the least, the zero to hero series by none other than Andrej Karpathy himself
 > ### [![ak](./images/image-2.png)](https://www.youtube.com/watch?v=VMj-3S1tku0&list=PLAqhIrjkxbuWI23v9cThsA9GvCAUhRvKZ)
 
  ### I already pretrained the model and saved the models params as a torch state dict, which is present in nanoGPT.pth, here is how u can generate some of your own Shakespearean text 
@@ -55,5 +55,3 @@ cd src/backend
 ![demo](images/demo.gif)
 
 ### all the important things I learnt along the way about actually making the web interface is mentioned in notes.txt
-
-### the next plan is to make a homepage, with nanoGPT and pearGPT as main features, as well as links to resources from whwre I learned everything, like a central hub, and also write a medium article about transformers :)
