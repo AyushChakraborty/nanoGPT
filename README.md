@@ -50,7 +50,7 @@ cd src/backend
 ```localhost:8080\main.html```
 ### then go to nanoGPT or pearGPT to play with it!(the nanoGPT is based on the preloaded weights, and pearGPT is the one I trained on the shakespear dataset)
 
-### within the GPTs, you can copy the text, and it also gives you simultaneous updates on the text generated, just like the actual chatGPT interface.
+### within the GPTs, you can copy the text, and it also gives you simultaneous updates on the text generated, just like the actual chatGPT interface. (The gif plays slowly)
 
 ![demo](images/demo.gif)
 
